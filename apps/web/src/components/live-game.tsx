@@ -1,155 +1,102 @@
-import { useEffect, useMemo, useState } from "react";
-import { Chess } from "chess.js";
-import { Chessboard } from "react-chessboard";
-import { useAccount } from "wagmi";
-import { StakeActions } from "@/components/stake-actions";
-import { getSocket } from "@/lib/socket";
-import { useGameStore } from "@/lib/game-store";
-import { MoveUpdate, RoomSummary } from "@/lib/types";
+// apps/web/src/components/live-game.tsx
+'use client';
 
-export function LiveGame() {
-  const { address } = useAccount();
-  const { activeRoom, setActiveRoom } = useGameStore();
-  const [message, setMessage] = useState("Waiting for game to start");
+import React, { useState, useEffect } from 'react';
+import { Chess } from 'chess.js';
+import { Chessboard } from 'react-chessboard';
+import { getSocket } from '@/lib/socket';
+import { useGameStore } from '@/lib/game-store';
 
+export default function LiveGame() {
+  const { activeRoom, setActiveRoom, isPlayerTurn } = useGameStore();
+  const [game, setGame] = useState<Chess | null>(null);
+  const [socket, setSocket] = useState<any>(null);
+
+  // Инициализация игры и сокета
   useEffect(() => {
-    const socket = getSocket();
+    setGame(new Chess());
+    const s = getSocket();
+    setSocket(s);
 
-    function onRoomReady(room: RoomSummary) {
-      setActiveRoom(room);
-      setMessage("Game started. White moves first.");
-    }
-
-    function onMoveApplied(update: MoveUpdate) {
-      setActiveRoom(update.room);
-      if (update.status === "checkmate") {
-        setMessage(`Checkmate. Winner wallet: ${update.winner}`);
-      } else if (update.status === "finished") {
-        setMessage("Game finished.");
-      } else {
-        setMessage(`Moves played: ${update.room.moves.join(", ") || "none yet"}`);
+    // Слушаем ходы противника
+    s.on('opponentMove', (move: any) => {
+      if (game) {
+        game.move(move);
+        setGame(new Chess(game.fen())); // Обновляем состояние для перерисовки
+        
+        // Обновляем FEN в сторе
+        setActiveRoom((prev) => prev ? { ...prev, fen: game.fen() } : null);
       }
-    }
-
-    function onStakeWarning(payload: { message: string }) {
-      setMessage(payload.message);
-    }
-
-    socket.on("room:ready", onRoomReady);
-    socket.on("move:applied", onMoveApplied);
-    socket.on("stake:warning", onStakeWarning);
+    });
 
     return () => {
-      socket.off("room:ready", onRoomReady);
-      socket.off("move:applied", onMoveApplied);
-      socket.off("stake:warning", onStakeWarning);
+      s.off('opponentMove');
     };
-  }, [setActiveRoom]);
-  const chess = useMemo(() => new Chess(activeRoom?.fen), [activeRoom?.fen]);
-  const isPlayerTurn =
-    activeRoom && address
-      ? (chess.turn() === "w" && activeRoom.white?.wallet === address) ||
-        (chess.turn() === "b" && activeRoom.black?.wallet === address)
-      : false;
+  }, [game, setActiveRoom]);
 
-  async function onDrop(sourceSquare: string, targetSquare: string) {
-    if (!activeRoom || !isPlayerTurn) {
-        return false;
-      }
-  
-      const localBoard = new Chess(activeRoom.fen);
-      const move = localBoard.move({
+  // Обработка хода игрока
+  const onDrop = (sourceSquare: string, targetSquare: string, piece: any) => {
+    if (!game || !isPlayerTurn) return false;
+
+    try {
+      // Пытаемся сделать ход локально
+      const move = game.move({
         from: sourceSquare,
         to: targetSquare,
-        promotion: "q",
+        promotion: 'q', // Всегда превращаем в ферзя для простоты
       });
-  
-      if (!move) {
-        return false;
-      }
-  
-      try {
-        const socket = getSocket();
-        await socket.emitWithAck("move:submit", {
-          roomId: activeRoom.id,
-          move: `${sourceSquare}${targetSquare}`,
+
+      // Если ход недопустим, отменяем
+      if (move === null) return false;
+
+      // Отправляем ход на сервер
+      if (socket && activeRoom?.id) {
+        socket.emit('makeMove', {
+          matchId: activeRoom.id,
+          move: {
+            from: sourceSquare,
+            to: targetSquare,
+            promotion: 'q',
+          },
         });
-        return true;
-      } catch {
-        return false;
       }
+
+      // Обновляем состояние доски
+      setGame(new Chess(game.fen()));
+      setActiveRoom((prev) => prev ? { ...prev, fen: game.fen() } : null);
+      
+      return true;
+    } catch (error) {
+      console.error("Invalid move", error);
+      return false;
     }
-  
-    if (!activeRoom) {
-      return (
-        <section className="panel live-panel empty-live">
-          <p className="eyebrow">LIVE BOARD</p>
-          <h2>Create or join a room to start playing.</h2>
-        </section>
-      );
-    }
-  
-    return (
-      <section className="panel live-panel">
-        <div className="panel-head">
-          <p className="eyebrow">LIVE MATCH</p>
-          <h2>{activeRoom.matchType === "stake" ? "C4C stake game" : "Free online game"}</h2>
-        </div>
-  
-        <div className="live-meta">
-          <div>
-            <span>White</span>
-            <strong>{activeRoom.white?.nickname || "Waiting"}</strong>
-          </div>
-          <div>
-            <span>Black</span>
-            <strong>{activeRoom.black?.nickname || "Waiting"}</strong>
-          </div>
-          <div>
-            <span>Pot</span>
-            <strong>
-              {activeRoom.matchType === "stake"
-                ? `${(activeRoom.stakeAmount * 2).toLocaleString()} C4C`
-                : "No stake"}
-            </strong>
-          </div>
-        </div>
-  
-        <div className="game-layout">
-          <div className="board-wrap">
-            <Chessboard
-              id="c4c-live-board"
-              position={activeRoom.fen}
-              onPieceDrop={onDrop}
-              arePiecesDraggable={Boolean(isPlayerTurn && activeRoom.black)}
-              boardWidth={520}
-              customDarkSquareStyle={{ backgroundColor: "#6f4f37" }}
-              customLightSquareStyle={{ backgroundColor: "#e3c99d" }}
-            />
-          </div>
-  
-          <aside className="moves-panel">
-            <div className="status-card">
-              <span>Status</span>
-              <strong>{message}</strong>
-            </div>
-            <div className="status-card">
-              <span>Turn</span>
-              <strong>{chess.turn() === "w" ? "White" : "Black"}</strong>
-            </div>
-            <div className="status-card">
-              <span>Moves</span>
-              <strong>{activeRoom.moves.length ? activeRoom.moves.join(" ") : "No moves yet"}</strong>
-            </div>
-            <div className="status-card">
-              <span>Room id</span>
-              <strong>{activeRoom.id}</strong>
-            </div>
-            <StakeActions room={activeRoom} />
-          </aside>
-        </div>
-      </section>
-    );
+  };
+
+  if (!activeRoom) {
+    return <div className="p-4 text-center">Нет активной партии</div>;
   }
 
-  
+  return (
+    <div className="flex flex-col items-center justify-center p-4">
+      <h2 className="text-2xl font-bold mb-4">Партия #{activeRoom.id.slice(0, 8)}</h2>
+      
+      <div className="border-4 border-gray-700 rounded-lg overflow-hidden shadow-2xl">
+        <Chessboard 
+          position={activeRoom.fen || 'start'}
+          onPieceDrop={onDrop}
+          boardWidth={500}
+          customDarkSquareStyle={{ backgroundColor: '#779556' }}
+          customLightSquareStyle={{ backgroundColor: '#ebecd0' }}
+        />
+      </div>
+
+      <div className="mt-4 text-lg">
+        {isPlayerTurn ? (
+          <span className="text-green-500 font-bold">Ваш ход!</span>
+        ) : (
+          <span className="text-gray-400">Ход соперника...</span>
+        )}
+      </div>
+    </div>
+  );
+}
