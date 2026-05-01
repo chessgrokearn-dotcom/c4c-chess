@@ -1,39 +1,39 @@
-export type MatchType = "free" | "stake";
+// apps/web/src/lib/types.ts
 
 export interface RoomSummary {
   id: string;
-  matchType: MatchType;
-  stakeAmount: number;
+  white: string;
+  stake: number;
   timeControl: number;
-  white?: PlayerSummary;
-  black?: PlayerSummary;
+}
+
+export interface MatchDetails extends RoomSummary {
   fen: string;
-  moves: string[];
+  black: string;
 }
 
-export interface PlayerSummary {
-  socketId: string;
-  wallet: `0x${string}`;
+export interface GameState {
+  activeRoom: MatchDetails | null;
+  setActiveRoom: (room: MatchDetails | null | ((prev: MatchDetails | null) => MatchDetails | null)) => void;
+  
+  isPlayerTurn: boolean;
+  setIsPlayerTurn: (turn: boolean) => void;
+  
+  userAddress: string | null;
+  setUserAddress: (address: string | null) => void;
+
   nickname: string;
-  color: "white" | "black";
-}
+  setNickname: (name: string) => void;
+  
+  matchType: 'ranked' | 'friendly';
+  setMatchType: (type: 'ranked' | 'friendly') => void;
+  
+  stakeAmount: number;
+  setStakeAmount: (amount: number) => void;
+  
+  timeControl: number;
+  setTimeControl: (time: number) => void;
 
-export interface MoveUpdate {
-  room: RoomSummary;
-  status: "active" | "checkmate" | "finished";
-  winner?: `0x${string}`;
+  rooms: RoomSummary[];
+  setRooms: (rooms: RoomSummary[]) => void;
 }
-
-export interface OnChainGameState {
-  creator: `0x${string}`;
-  challenger: `0x${string}`;
-  stake: bigint;
-  creatorPaid: boolean;
-  challengerPaid: boolean;
-  winner: `0x${string}`;
-  isDraw: boolean;
-  finished: boolean;
-  createdAt: bigint;
-  timeLimit: bigint;
-}
-
