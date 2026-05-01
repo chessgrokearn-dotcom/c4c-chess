@@ -9,6 +9,14 @@ interface Match {
   stake: number;
 }
 
+// Интерфейс для списка комнат в лобби
+interface RoomSummary {
+  id: string;
+  white: string;
+  stake: number;
+  timeControl: number;
+}
+
 interface GameState {
   activeRoom: Match | null;
   setActiveRoom: (room: Match | null | ((prev: Match | null) => Match | null)) => void;
@@ -29,8 +37,12 @@ interface GameState {
   stakeAmount: number;
   setStakeAmount: (amount: number) => void;
   
-  timeControl: number; // в секундах
+  timeControl: number;
   setTimeControl: (time: number) => void;
+
+  // Список доступных комнат (лобби)
+  rooms: RoomSummary[];
+  setRooms: (rooms: RoomSummary[]) => void;
 }
 
 export const useGameStore = create<GameState>((set, get) => ({
@@ -43,6 +55,9 @@ export const useGameStore = create<GameState>((set, get) => ({
   matchType: 'ranked',
   stakeAmount: 50000,
   timeControl: 600, // 10 минут по умолчанию
+  
+  // Изначально список комнат пуст
+  rooms: [],
 
   setActiveRoom: (room) => {
     set((state) => {
@@ -69,4 +84,6 @@ export const useGameStore = create<GameState>((set, get) => ({
   setMatchType: (type) => set({ matchType: type }),
   setStakeAmount: (amount) => set({ stakeAmount: amount }),
   setTimeControl: (time) => set({ timeControl: time }),
+  
+  setRooms: (rooms) => set({ rooms }),
 }));
