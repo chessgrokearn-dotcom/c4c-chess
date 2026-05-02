@@ -5,6 +5,7 @@ export const fetchCache = "force-no-store";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "@/app/globals.css";
+import { AppProviders } from "@/components/app-providers";
 
 const inter = Inter({ subsets: ["latin", "cyrillic"] });
 
@@ -19,7 +20,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        {children}
+        <AppProviders>{children}</AppProviders>
       </body>
     </html>
   );
