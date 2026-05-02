@@ -12,6 +12,15 @@ export interface MatchDetails extends RoomSummary {
   black: string;
 }
 
+export interface OnChainGameState {
+  isActive: boolean;
+  whitePlayer: string;
+  blackPlayer: string;
+  stake: bigint;
+  isWhiteTurn: boolean;
+  lastMoveTime: bigint;
+}
+
 export interface GameState {
   activeRoom: MatchDetails | null;
   setActiveRoom: (room: MatchDetails | null | ((prev: MatchDetails | null) => MatchDetails | null)) => void;

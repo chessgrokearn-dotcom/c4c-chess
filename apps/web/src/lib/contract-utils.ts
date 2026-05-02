@@ -1,11 +1,7 @@
+// apps/web/src/lib/contract-utils.ts
+import { keccak256, toBytes } from "viem";
 
-import { isHex, pad, stringToHex } from "viem";
-
-export function toGameId(roomId: string) {
-  if (isHex(roomId) && roomId.length === 66) {
-    return roomId as `0x${string}`;
-  }
-
-  return pad(stringToHex(roomId, { size: 32 }), { size: 32 });
+export function toGameId(roomId: string): string {
+  // Простая хеш-функция для превращения ID комнаты в bytes32 для контракта
+  return keccak256(toBytes(roomId));
 }
-
