@@ -1,12 +1,9 @@
-// apps/web/next.config.mjs
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'standalone',
   reactStrictMode: false,
   typescript: { ignoreBuildErrors: true },
   eslint: { ignoreDuringBuilds: true },
-  
-  // 🔥 Подавление предупреждений о мобильных модулях
   webpack: (config) => {
     config.resolve.fallback = {
       ...config.resolve.fallback,

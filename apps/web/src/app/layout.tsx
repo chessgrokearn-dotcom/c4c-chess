@@ -1,17 +1,18 @@
 // apps/web/src/app/layout.tsx
 export const dynamic = "force-dynamic";
-export const fetchCache = "force-no-store";
 
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "@/app/globals.css";
 import { AppProviders } from "@/components/app-providers";
+import { CONFIG } from "@/lib/config";
 
 const inter = Inter({ subsets: ["latin", "cyrillic"] });
 
+// 🔥 ИСПРАВЛЕНО: было "meta Metadata", стало "metadata: Metadata"
 export const metadata: Metadata = {
-  title: "C4C Chess",
-  description: "Play chess, earn C4C tokens on BSC",
+  title: CONFIG.APP_NAME,
+  description: CONFIG.APP_DESCRIPTION,
 };
 
 export default function RootLayout({
