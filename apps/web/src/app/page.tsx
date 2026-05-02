@@ -36,7 +36,7 @@ export default function Home() {
     };
   }, []);
 
-  // Исправлено: параметр data с типом any
+  // ИСПРАВЛЕНО: параметр data с типом any (правильный синтаксис)
   const handleCreateGame = async (  any) => {
     console.log("Creating game with:", data);
     const socket = getSocket();
