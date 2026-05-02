@@ -3,17 +3,17 @@ import { v4 as uuidv4 } from 'uuid';
 
 interface Room {
   id: string;
-  white: string; // nickname
+  white: string;
   black: string | null;
   stake: number;
   timeControl: number;
   fen: string;
 }
 
-class MatchService {
+export class MatchService {
   private rooms: Map<string, Room> = new Map();
 
-  createRoom(data: any): Room {
+  createRoom( any): Room {
     const roomId = uuidv4();
     const room: Room = {
       id: roomId,
@@ -40,11 +40,6 @@ class MatchService {
   handleMove(roomId: string, move: any, callback: (fen: string) => void) {
     const room = this.rooms.get(roomId);
     if (!room) return;
-
-    // Здесь должна быть логика chess.js для валидации хода
-    // Для простоты просто возвращаем тот же FEN или обновляем его
-    // В реальном проекте здесь: game.move(move); callback(game.fen());
-    
     console.log(`Move in room ${roomId}:`, move);
     callback(room.fen); 
   }

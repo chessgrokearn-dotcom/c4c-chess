@@ -1,8 +1,7 @@
-// apps/api/src/game/lobby.gateway.ts (ТОЛЬКО ДЛЯ BACKEND / RENDER)
+// apps/api/src/game/lobby.gateway.ts
 import { Server, Socket } from 'socket.io';
 import { MatchService } from '../services/match.service';
 import { ContractService } from '../services/contract.service';
-import { isValidStake } from '../config/stake.config';
 
 export class LobbyGateway {
   constructor(
@@ -19,7 +18,7 @@ export class LobbyGateway {
 
       socket.on('createRoom', async (data) => {
         try {
-          const room = await this.matchService.createRoom(data);
+          const room = this.matchService.createRoom(data);
           socket.join(room.id);
           socket.emit('roomCreated', room);
           this.broadcastLobby();
@@ -30,12 +29,11 @@ export class LobbyGateway {
 
       socket.on('joinRoom', async (data) => {
         try {
-          const room = await this.matchService.joinRoom(data.roomId, data.nickname);
+          const room = this.matchService.joinRoom(data.roomId, data.nickname);
           socket.join(room.id);
           socket.emit('roomJoined', room);
           this.broadcastLobby();
           
-          // Если комната заполнена, начинаем игру
           if (room.black) {
             this.startGame(room.id);
           }
@@ -45,7 +43,7 @@ export class LobbyGateway {
       });
 
       socket.on('makeMove', (data) => {
-        this.matchService.handleMove(data.matchId, data.move, (fen) => {
+        this.matchService.handleMove(data.matchId, data.move, (fen: string) => {
           this.io.to(data.matchId).emit('opponentMove', { fen, move: data.move });
         });
       });
@@ -62,7 +60,6 @@ export class LobbyGateway {
   }
 
   private startGame(roomId: string) {
-    // Логика начала игры
     console.log(`Game started in room ${roomId}`);
   }
 }
