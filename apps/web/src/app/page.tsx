@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react';
 import { getSocket } from '@/lib/socket';
 import CreateGameForm from '@/components/create-game-form';
-import { RoomList } from '@/components/room-list'; // Исправлено: добавлены фигурные скобки
+import { RoomList } from '@/components/room-list';
 import LiveGame from '@/components/live-game';
 import { useGameStore } from '@/lib/game-store';
 
@@ -31,7 +31,8 @@ export default function Home() {
     };
   }, []);
 
-  const handleCreateGame = async ( any) => {
+  // Исправлено: добавлен тип для параметра data
+  const handleCreateGame = async (data: any) => {
     console.log("Creating game with:", data);
     const socket = getSocket();
     socket.emit('createRoom', data);
