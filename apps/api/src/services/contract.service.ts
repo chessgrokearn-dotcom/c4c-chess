@@ -1,38 +1,30 @@
 // apps/api/src/services/contract.service.ts
-import { ethers } from 'ethers';
-import { STAKE_CONFIG } from '../config/stake.config';
-
-const TOKEN_ABI = [
-  "function balanceOf(address owner) view returns (uint256)",
-  "function decimals() view returns (uint8)"
-];
 
 export class ContractService {
-  private provider: ethers.JsonRpcProvider;
-  private tokenContract: ethers.Contract;
-
-  constructor() {
-    this.provider = new ethers.JsonRpcProvider(STAKE_CONFIG.RPC_URL);
-    this.tokenContract = new ethers.Contract(
-      STAKE_CONFIG.TOKEN_ADDRESS,
-      TOKEN_ABI,
-      this.provider
-    );
+  /**
+   * Проверяет, есть ли у пользователя достаточно средств и аппрувов для ставки.
+   * Пока возвращает true для тестирования.
+   */
+  async verifyStake(userAddress: string, amount: number): Promise<boolean> {
+    console.log(`Verifying stake for ${userAddress}: ${amount} C4C`);
+    // TODO: Добавить реальную проверку баланса и allowance через RPC ноду
+    return true;
   }
 
-  async checkBalance(address: string): Promise<number> {
-    try {
-      const balanceBigNumber = await this.tokenContract.balanceOf(address);
-      const decimals = await this.tokenContract.decimals();
-      return Number(ethers.formatUnits(balanceBigNumber, decimals));
-    } catch (error) {
-      console.error(`Error checking balance for ${address}:`, error);
-      return 0; // В случае ошибки возвращаем 0, чтобы не ломать сервер
-    }
-  }
-
-  async validateStake(address: string, amount: number): Promise<boolean> {
-    const balance = await this.checkBalance(address);
-    return balance >= amount;
+  /**
+   * Записывает результат игры в смарт-контракт.
+   */
+  async recordGameResult(
+    gameId: string, 
+    winner: string, 
+    loser: string, 
+    stake: number
+  ): Promise<boolean> {
+    console.log(`Recording game result: Winner ${winner}, Loser ${loser}, Stake ${stake}`);
+    // TODO: Вызов метода смарт-контракта для распределения средств
+    return true;
   }
 }
+
+// Экспортируем единственный экземпляр сервиса (Singleton)
+export const contractService = new ContractService();
