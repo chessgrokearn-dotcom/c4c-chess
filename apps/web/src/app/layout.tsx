@@ -1,19 +1,30 @@
-import "@rainbow-me/rainbowkit/styles.css";
-import "../styles/globals.css";
+// apps/web/src/app/layout.tsx
+// ⚠️ ОТКЛЮЧАЕМ СТАТИЧЕСКУЮ ГЕНЕРАЦИЮ ДЛЯ ВСЕГО ПРИЛОЖЕНИЯ
+export const dynamic = 'force-dynamic';
+
 import type { Metadata } from "next";
-import { PropsWithChildren } from "react";
+import { Inter } from "next/font/google";
+import "./globals.css";
 import { AppProviders } from "@/components/app-providers";
+
+const inter = Inter({ subsets: ["latin", "cyrillic"] });
 
 export const metadata: Metadata = {
   title: "C4C Chess",
-  description: "Play chess casually or stake C4C tokens against other players.",
+  description: "Play chess, earn C4C tokens",
 };
 
-export default function RootLayout({ children }: PropsWithChildren) {
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
     <html lang="en">
-      <body>
-        <AppProviders>{children}</AppProviders>
+      <body className={inter.className}>
+        <AppProviders>
+          {children}
+        </AppProviders>
       </body>
     </html>
   );

@@ -1,10 +1,10 @@
 // apps/web/next.config.mjs
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Отключаем статическую генерацию для всех страниц (нужно для RainbowKit)
+  // Используем серверный рендеринг (не статический экспорт)
   output: 'standalone',
   
-  // Игнорируем ошибки во время сборки для сторонних библиотек
+  // Отключаем строгие проверки при сборке (для сторонних библиотек)
   typescript: {
     ignoreBuildErrors: true,
   },
@@ -12,9 +12,10 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
 
+  // Настройка Webpack для совместимости с viem/wagmi/rainbowkit
   webpack: (config, { isServer }) => {
-    // Исправляем проблемы с импортами для viem/wagmi/rainbowkit
     if (!isServer) {
+      // Отключаем полифилы для браузера, которые ломают сборку
       config.resolve.fallback = {
         ...config.resolve.fallback,
         fs: false,
