@@ -1,8 +1,6 @@
 // apps/web/src/app/page.tsx
-// Force rebuild 2026-05-02
 'use client';
 
-// Отключаем статическую генерацию для этой страницы (нужно для RainbowKit)
 export const dynamic = 'force-dynamic';
 
 import { useEffect, useState } from 'react';
@@ -19,25 +17,19 @@ export default function Home() {
 
   useEffect(() => {
     const socket = getSocket();
-    
     const handleConnect = () => setStatus('Подключено ✅');
     const handleDisconnect = () => setStatus('Отключено ❌');
-
     socket.on('connect', handleConnect);
     socket.on('disconnect', handleDisconnect);
-
-    if (!socket.connected) {
-      socket.connect();
-    }
-
+    if (!socket.connected) socket.connect();
     return () => { 
       socket.off('connect', handleConnect); 
       socket.off('disconnect', handleDisconnect); 
     };
   }, []);
 
-  // ИСПРАВЛЕНО: параметр data с типом any (правильный синтаксис)
-  const handleCreateGame = async (  any) => {
+  // ✅ ПРАВИЛЬНЫЙ СИНТАКСИС: (имя_параметра: тип)
+  const handleCreateGame = async (data: any) => {
     console.log("Creating game with:", data);
     const socket = getSocket();
     socket.emit('createRoom', data);
@@ -54,12 +46,8 @@ export default function Home() {
             {status}
           </span>
         </header>
-        
         {!activeRoom && <LobbyPanel />}
-
-        {activeRoom ? (
-          <LiveGame />
-        ) : (
+        {activeRoom ? <LiveGame /> : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8">
             <CreateGameForm onCreateGame={handleCreateGame} />
             <RoomList />
