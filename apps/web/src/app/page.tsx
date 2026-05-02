@@ -2,6 +2,9 @@
 // Force rebuild 2026-05-02
 'use client';
 
+// Отключаем статическую генерацию для этой страницы (нужно для RainbowKit)
+export const dynamic = 'force-dynamic';
+
 import { useEffect, useState } from 'react';
 import { getSocket } from '@/lib/socket';
 import CreateGameForm from '@/components/create-game-form';
@@ -33,7 +36,7 @@ export default function Home() {
     };
   }, []);
 
-  const handleCreateGame = async ( data: any) => {
+  const handleCreateGame = async (  any) => {
     console.log("Creating game with:", data);
     const socket = getSocket();
     socket.emit('createRoom', data);
