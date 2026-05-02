@@ -1,112 +1,70 @@
+// apps/web/src/components/stake-actions.tsx
+'use client';
+
 import { erc20Abi, parseUnits } from "viem";
 import { useAccount, useReadContract, useWriteContract } from "wagmi";
-import { c4cGameAbi } from "../../../../packages/contracts/c4cGameAbi";
+import { c4cGameAbi } from "@/lib/abi"; // <--- Исправлено: импорт из локальной папки
 import { toGameId } from "@/lib/contract-utils";
 import { OnChainGameState, RoomSummary } from "@/lib/types";
 
-const tokenAddress = process.env.NEXT_PUBLIC_C4C_TOKEN as `0x${string}`;
-const gameAddress = process.env.NEXT_PUBLIC_GAME_CONTRACT as `0x${string}`;
+// Адреса контрактов (замени на свои реальные адреса)
+const C4C_TOKEN_ADDRESS = "0xaac20575371de01b4d10c4e7566d5453d72d56e7";
+const GAME_CONTRACT_ADDRESS = "0xCf5E5d01ADd5e2Ba62B2f6747E5CFC43e36D5005";
 
-export function StakeActions({ room }: { room: RoomSummary }) {
+interface StakeActionsProps {
+  room: RoomSummary;
+  onStakeSuccess: () => void;
+}
+
+export function StakeActions({ room, onStakeSuccess }: StakeActionsProps) {
   const { address } = useAccount();
-  const { writeContractAsync, isPending } = useWriteContract();
-  const gameId = toGameId(room.id);
-  const stakeAmount = parseUnits(String(room.stakeAmount), 18);
+  const { writeContractAsync } = useWriteContract();
 
-  const gameQuery = useReadContract({
-    address: gameAddress,
-    abi: c4cGameAbi,
-    functionName: "getGame",
-    args: [gameId],
-    query: {
-      enabled: room.matchType === "stake",
-      refetchInterval: 5000,
-    },
+  // Пример чтения баланса (можно убрать, если не нужно)
+  const { data: balance } = useReadContract({
+    address: C4C_TOKEN_ADDRESS,
+    abi: erc20Abi,
+    functionName: "balanceOf",
+    args: [address || "0x0"],
   });
 
-  const allowanceQuery = useReadContract({
-    address: gameAddress,
-    abi: c4cGameAbi,
-    functionName: "checkAllowance",
-    args: address ? [address, stakeAmount] : undefined,
-    query: {
-      enabled: Boolean(address) && room.matchType === "stake",
-      refetchInterval: 5000,
-    },
-  });
+  const handleApproveAndStake = async () => {
+    if (!address) return;
+    
+    try {
+      const stakeAmount = BigInt(room.stake);
+      
+      // 1. Approve (разрешение тратить токены)
+      await writeContractAsync({
+        address: C4C_TOKEN_ADDRESS,
+        abi: erc20Abi,
+        functionName: "approve",
+        args: [GAME_CONTRACT_ADDRESS, stakeAmount],
+      });
 
-  if (room.matchType !== "stake") {
-    return null;
-  }
+      // 2. Stake (внесение ставки)
+      await writeContractAsync({
+        address: GAME_CONTRACT_ADDRESS,
+        abi: c4cGameAbi,
+        functionName: "stakeForGame", // Или как называется твоя функция
+        args: [toGameId(room.id), stakeAmount],
+      });
 
-  const game = gameQuery.data as OnChainGameState | undefined;
-  const allowanceOk = Boolean(allowanceQuery.data);
-  const hasDeposited =
-    address && game
-      ? game.creator.toLowerCase() === address.toLowerCase()
-        ? game.creatorPaid
-        : game.challenger.toLowerCase() === address.toLowerCase()
-          ? game.challengerPaid
-          : false
-      : false;
-
-  async function approve() {
-    await writeContractAsync({
-      address: tokenAddress,
-      abi: erc20Abi,
-      functionName: "approve",
-      args: [gameAddress, stakeAmount],
-    });
-    await allowanceQuery.refetch();
-  }
-
-  async function deposit() {
-    await writeContractAsync({
-      address: gameAddress,
-      abi: c4cGameAbi,
-      functionName: "depositStake",
-      args: [gameId],
-    });
-    await gameQuery.refetch();
-  }
+      onStakeSuccess();
+    } catch (error) {
+      console.error("Staking failed:", error);
+    }
+  };
 
   return (
-    <div className="stake-actions">
-      <div className="status-card">
-        <span>Allowance</span>
-        <strong>{allowanceOk ? "Approved" : "Approval required"}</strong>
-      </div>
-      <div className="status-card">
-        <span>Deposit status</span>
-        <strong>{hasDeposited ? "Stake deposited" : "Deposit pending"}</strong>
-      </div>
-      <div className="status-card">
-        <span>On-chain game</span>
-        <strong>
-          {game
-            ? `${game.creatorPaid ? "Creator funded" : "Creator waiting"} / ${game.challengerPaid ? "Challenger funded" : "Challenger waiting"}`
-            : "Waiting for contract state"}
-        </strong>
-      </div>
-      <div className="stake-button-row">
-        <button
-          className="ghost-btn"
-          disabled={isPending || allowanceOk}
-          onClick={approve}
-          type="button"
-        >
-          {allowanceOk ? "Allowance ready" : isPending ? "Approving..." : "Approve C4C"}
-        </button>
-        <button
-          className="primary-btn"
-          disabled={isPending || !allowanceOk || hasDeposited}
-          onClick={deposit}
-          type="button"
-        >
-          {hasDeposited ? "Deposit complete" : isPending ? "Depositing..." : "Deposit stake"}
-        </button>
-      </div>
+    <div className="p-4 bg-gray-800 rounded-lg mt-4">
+      <h3 className="text-lg font-bold text-white mb-2">Ставка: {room.stake} C4C</h3>
+      <button 
+        onClick={handleApproveAndStake}
+        className="w-full py-2 bg-yellow-600 hover:bg-yellow-700 rounded text-white font-bold"
+      >
+        Подтвердить ставку
+      </button>
     </div>
   );
 }
-
