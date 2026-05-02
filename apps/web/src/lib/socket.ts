@@ -5,12 +5,10 @@ let socket: Socket | null = null;
 
 export function getSocket() {
   if (!socket) {
-    // Берем адрес из переменных окружения или используем локальный для тестов
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
     
-    // Socket.IO сам заменит http/https на ws/wss, но мы поможем ему явно
     socket = io(apiUrl, {
-      transports: ["websocket"], // Принудительно используем WebSocket (быстрее и стабильнее для игр)
+      transports: ["websocket"],
       autoConnect: true,
       reconnection: true,
       reconnectionDelay: 1000,

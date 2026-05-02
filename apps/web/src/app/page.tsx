@@ -3,55 +3,48 @@
 
 import { useEffect, useState } from 'react';
 import { getSocket } from '@/lib/socket';
+import CreateGameForm from '@/components/create-game-form';
+import RoomList from '@/components/room-list';
+import LiveGame from '@/components/live-game';
+import { useGameStore } from '@/lib/game-store';
 
 export default function Home() {
+  const { activeRoom } = useGameStore();
   const [status, setStatus] = useState('Отключение...');
-  const [socketId, setSocketId] = useState<string | null>(null);
 
   useEffect(() => {
     const socket = getSocket();
-
-    socket.on('connect', () => {
-      setStatus('Подключено ✅');
-      setSocketId(socket.id || null);
-      console.log('Connected with ID:', socket.id);
-    });
-
-    socket.on('disconnect', () => {
-      setStatus('Отключено ❌');
-      setSocketId(null);
-    });
-
-    socket.on('connect_error', (err) => {
-      setStatus(`Ошибка подключения: ${err.message}`);
-    });
-
-    // Пробуем подключиться, если еще не подключены
-    if (!socket.connected) {
-      socket.connect();
-    }
-
-    return () => {
-      socket.off('connect');
-      socket.off('disconnect');
-      socket.off('connect_error');
-    };
+    socket.on('connect', () => setStatus('Подключено ✅'));
+    socket.on('disconnect', () => setStatus('Отключено ❌'));
+    if (!socket.connected) socket.connect();
+    return () => { socket.off('connect'); socket.off('disconnect'); };
   }, []);
 
+  const handleCreateGame = async ( any) => {
+    console.log("Creating game with:", data);
+    // Здесь должна быть логика отправки на сервер через сокет
+    const socket = getSocket();
+    socket.emit('createRoom', data);
+  };
+
   return (
-    <main style={{ padding: '40px', fontFamily: 'Arial, sans-serif', textAlign: 'center' }}>
-      <h1>♟️ C4C Chess Game</h1>
-      <div style={{ marginTop: '20px', padding: '20px', border: '1px solid #ccc', borderRadius: '8px' }}>
-        <h2>Статус сервера:</h2>
-        <p style={{ fontSize: '18px', fontWeight: 'bold', color: status.includes('✅') ? 'green' : 'red' }}>
-          {status}
-        </p>
-        {socketId && <p>ID сессии: {socketId}</p>}
-      </div>
-      
-      <div style={{ marginTop: '30px' }}>
-        <p>Адрес токена C4C: <code>0xaac20575371de01b4d10c4e7566d5453d72d56e7</code></p>
-        <p>Контракт игры: <code>0xCf5E5d01ADd5e2Ba62B2f6747E5CFC43e36D5005</code></p>
+    <main className="min-h-screen bg-gray-900 text-white p-8">
+      <div className="max-w-4xl mx-auto">
+        <header className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold">♟️ C4C Chess</h1>
+          <span className={`px-3 py-1 rounded ${status.includes('✅') ? 'bg-green-900 text-green-200' : 'bg-red-900 text-red-200'}`}>
+            {status}
+          </span>
+        </header>
+
+        {activeRoom ? (
+          <LiveGame />
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <CreateGameForm onCreateGame={handleCreateGame} />
+            <RoomList />
+          </div>
+        )}
       </div>
     </main>
   );

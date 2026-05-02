@@ -12,90 +12,46 @@ export default function LiveGame() {
   const [game, setGame] = useState<Chess | null>(null);
   const [socket, setSocket] = useState<any>(null);
 
-  // Инициализация игры и сокета
   useEffect(() => {
     setGame(new Chess());
     const s = getSocket();
     setSocket(s);
 
-    // Слушаем ходы противника
     s.on('opponentMove', (move: any) => {
       if (game) {
         game.move(move);
-        setGame(new Chess(game.fen())); // Обновляем состояние для перерисовки
-        
-        // Обновляем FEN в сторе
+        setGame(new Chess(game.fen()));
         setActiveRoom((prev) => prev ? { ...prev, fen: game.fen() } : null);
       }
     });
 
-    return () => {
-      s.off('opponentMove');
-    };
+    return () => { s.off('opponentMove'); };
   }, [game, setActiveRoom]);
 
-  // Обработка хода игрока
   const onDrop = (sourceSquare: string, targetSquare: string, piece: any) => {
     if (!game || !isPlayerTurn) return false;
-
     try {
-      // Пытаемся сделать ход локально
-      const move = game.move({
-        from: sourceSquare,
-        to: targetSquare,
-        promotion: 'q', // Всегда превращаем в ферзя для простоты
-      });
-
-      // Если ход недопустим, отменяем
+      const move = game.move({ from: sourceSquare, to: targetSquare, promotion: 'q' });
       if (move === null) return false;
-
-      // Отправляем ход на сервер
       if (socket && activeRoom?.id) {
-        socket.emit('makeMove', {
-          matchId: activeRoom.id,
-          move: {
-            from: sourceSquare,
-            to: targetSquare,
-            promotion: 'q',
-          },
-        });
+        socket.emit('makeMove', { matchId: activeRoom.id, move: { from: sourceSquare, to: targetSquare, promotion: 'q' } });
       }
-
-      // Обновляем состояние доски
       setGame(new Chess(game.fen()));
       setActiveRoom((prev) => prev ? { ...prev, fen: game.fen() } : null);
-      
       return true;
-    } catch (error) {
-      console.error("Invalid move", error);
-      return false;
-    }
+    } catch (error) { return false; }
   };
 
-  if (!activeRoom) {
-    return <div className="p-4 text-center">Нет активной партии</div>;
-  }
+  if (!activeRoom) return <div className="p-4 text-center text-white">Нет активной партии</div>;
 
   return (
     <div className="flex flex-col items-center justify-center p-4">
-      <h2 className="text-2xl font-bold mb-4">Партия #{activeRoom.id.slice(0, 8)}</h2>
-      
-      <div className="border-4 border-gray-700 rounded-lg overflow-hidden shadow-2xl">
-        <Chessboard 
-          position={activeRoom.fen || 'start'}
-          onPieceDrop={onDrop}
-          boardWidth={500}
-          customDarkSquareStyle={{ backgroundColor: '#779556' }}
-          customLightSquareStyle={{ backgroundColor: '#ebecd0' }}
-        />
+      <h2 className="text-2xl font-bold mb-4 text-white">Партия #{activeRoom.id.slice(0, 8)}</h2>
+      <div className="border-4 border-gray-700 rounded-lg overflow-hidden">
+        <Chessboard position={activeRoom.fen || 'start'} onPieceDrop={onDrop} boardWidth={500} />
       </div>
-
-      <div className="mt-4 text-lg">
-        {isPlayerTurn ? (
-          <span className="text-green-500 font-bold">Ваш ход!</span>
-        ) : (
-          <span className="text-gray-400">Ход соперника...</span>
-        )}
+      <div className="mt-4 text-lg text-white">
+        {isPlayerTurn ? <span className="text-green-500 font-bold">Ваш ход!</span> : <span>Ход соперника...</span>}
       </div>
     </div>
   );

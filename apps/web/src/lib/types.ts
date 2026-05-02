@@ -4,7 +4,7 @@ export interface RoomSummary {
   id: string;
   white: string;
   stake: number;
-  timeControl: number;
+  timeControl: number; // Время в секундах
 }
 
 export interface MatchDetails extends RoomSummary {
