@@ -6,7 +6,7 @@ import { useAccount } from 'wagmi';
 import { useGameStore } from '@/lib/game-store';
 
 interface CreateGameFormProps {
-  onCreateGame: ( any) => Promise<void> | void;
+  onCreateGame: (data: any) => Promise<void> | void; // Исправлено: добавлено имя параметра data
 }
 
 export default function CreateGameForm({ onCreateGame }: CreateGameFormProps) {
