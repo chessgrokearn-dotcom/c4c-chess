@@ -56,6 +56,7 @@ export type ProfileThemeId=keyof typeof PROFILE_THEMES;
 export type LanguageCode=keyof typeof LANGUAGES;
 export interface PlayerProfile{id:string;name:string;theme:ProfileThemeId;language:LanguageCode;boardTheme:BoardThemeId;[key:string]:any;}
 export interface Game{id:string;creatorId:string;status:string;[key:string]:any;}
+export interface GameInvite {id:string;gameId:string;fromPlayer:string;toPlayer:string;status:"pending"|"accepted"|"declined";createdAt:number;}
 export interface Friend{id:string;name:string;[key:string]:any;}
 
 // 🔥 ИСПРАВЛЕНО: dappMetadata: и meta: с двоеточиями!
@@ -78,4 +79,4 @@ export function getPieceStyle(c:'white'|'black'):React.CSSProperties{
 }
 export const PIECE_SYMBOLS:Record<string,Record<'w'|'b',string>>={p:{w:'♙',b:'♟'},n:{w:'♘',b:'♞'},b:{w:'♗',b:'♝'},r:{w:'♖',b:'♜'},q:{w:'♕',b:'♛'},k:{w:'♔',b:'♚'}};
 
-export const CONFIG={C4C_TOKEN_ADDRESS,GAME_CONTRACT_ADDRESS,C4C_BUY_URL,CHAIN_ID,CHAIN_NAME,RPC_URL,APP_NAME,APP_DESCRIPTION,WALLETCONNECT_PROJECT_ID,HOW_TO_PLAY,TIME_OPTIONS,STAKE_OPTIONS,BOARD_THEMES,PROFILE_THEMES,LANGUAGES,formatTime,formatC4C,getBotMove,getBoardThemeForProfile,saveProfileToStorage:saveProfile,loadProfileFromStorage:loadProfile,createWagmiConfig,canConnectToMetaMask:canConnectMeta,canConnectToWalletConnect:canConnectMeta,resetConnectionStates:resetConn,getPieceStyle,PIECE_SYMBOLS,} as const;
+export const CONFIG={C4C_TOKEN_ADDRESS,GAME_CONTRACT_ADDRESS,C4C_BUY_URL,CHAIN_ID,CHAIN_NAME,RPC_URL,APP_NAME,APP_DESCRIPTION,WALLETCONNECT_PROJECT_ID,HOW_TO_PLAY,TIME_OPTIONS,STAKE_OPTIONS,BOARD_THEMES,PROFILE_THEMES,LANGUAGES,formatTime,formatC4C,getBotMove,getBoardThemeForProfile,saveProfileToStorage:saveProfile,loadProfileFromStorage:loadProfile,createWagmiConfig,canConnectToMetaMask:canConnectMeta,canConnectToWalletConnect:canConnectMeta,resetConnectionStates:resetConn,getPieceStyle,PIECE_SYMBOLS,GameInvite,} as const;
