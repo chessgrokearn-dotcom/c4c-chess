@@ -1,50 +1,100 @@
 // apps/web/src/app/page.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAccount, useConnect, useDisconnect, useConnectors, useBalance, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { parseAbi } from 'viem';
 import { Chess, type Square, type Piece, type Move } from 'chess.js';
 import { CONFIG } from '@/lib/config';
 import { getBotMove, isBotTurn, startGameWithBot } from '@/components/chess-bot';
-import { ChatBox } from '@/components/chat-box';
+import { ChatBoxDynamic } from '@/components/chat-box-dynamic';
 
 const CHESS_GAME_ABI = parseAbi([
   "function makeMove(string gameId, string moveNotation) external",
   "function getGameMoves(string gameId) external view returns (string[])"
 ]);
 
+function formatTime(seconds: number): string {
+  if (seconds >= 3600) {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+    return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  }
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+}
+
+const TIME_OPTIONS = [
+  { label: '5 мин', value: 300 },
+  { label: '15 мин', value: 900 },
+  { label: '30 мин', value: 1800 },
+  { label: '1 час', value: 3600 },
+  { label: '24 часа', value: 86400 },
+] as const;
+
 function ChessBoard() {
-  // 🔥 Храним FEN вместо мутируемого объекта Chess
   const [fen, setFen] = useState<string>(() => startGameWithBot());
   const [selectedSquare, setSelectedSquare] = useState<Square | null>(null);
   const [possibleMoves, setPossibleMoves] = useState<Square[]>([]);
   const [moveHistory, setMoveHistory] = useState<string[]>([]);
   const [pendingMove, setPendingMove] = useState<string | null>(null);
   const [gameMode, setGameMode] = useState<'bot' | 'pvp'>('bot');
-  const { address } = useAccount();
+  const [timeControl, setTimeControl] = useState<number>(900);
+  const [whiteTime, setWhiteTime] = useState<number>(900);
+  const [blackTime, setBlackTime] = useState<number>(900);
+  const [gameOver, setGameOver] = useState<string | null>(null);
   
-  // ✅ wagmi v2: правильные алиасы data -> txHash / balance
-  const { writeContract, data: txHash, isPending: isTxPending } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess: isTxSuccess } = useWaitForTransactionReceipt({ hash: txHash });
+  const { address, chain } = useAccount();
+  
+  // 🔥 🔥 🔥 РЕШЕНИЕ: используем .data напрямую, без алиасов 🔥 🔥 🔥
+  const writeContractResult = useWriteContract();
+  const txHash = writeContractResult.data;
+  const isTxPending = writeContractResult.isPending;
+  
+  const waitForTxResult = useWaitForTransactionReceipt({ hash: txHash });
+  const isConfirming = waitForTxResult.isLoading;
+  const isTxSuccess = waitForTxResult.isSuccess;
+  
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const botTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // 🔥 Ход бота
+  useEffect(() => { resetGame(); }, [timeControl, gameMode]);
+
   useEffect(() => {
-    if (gameMode === 'bot') {
+    if (gameOver) { if (timerRef.current) clearInterval(timerRef.current); return; }
+    const currentGame = new Chess(fen);
+    const isWhiteTurn = currentGame.turn() === 'w';
+    const timeLeft = isWhiteTurn ? whiteTime : blackTime;
+    if (timeLeft <= 0) { setGameOver(isWhiteTurn ? '⚪ Белые просрочили время!' : '⚫ Чёрные просрочили время!'); return; }
+    timerRef.current = setInterval(() => {
+      if (isWhiteTurn) {
+        setWhiteTime(prev => { if (prev <= 1) { setGameOver('⚪ Белые просрочили время!'); return 0; } return prev - 1; });
+      } else {
+        setBlackTime(prev => { if (prev <= 1) { setGameOver('⚫ Чёрные просрочили время!'); return 0; } return prev - 1; });
+      }
+    }, 1000);
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [fen, whiteTime, blackTime, gameOver]);
+
+  useEffect(() => {
+    if (gameMode === 'bot' && !gameOver) {
       const currentGame = new Chess(fen);
       if (isBotTurn(currentGame) && !currentGame.isGameOver()) {
-        const timer = setTimeout(() => {
+        botTimerRef.current = setTimeout(() => {
           const botMove = getBotMove(currentGame);
           if (botMove) {
             currentGame.move(botMove);
             setFen(currentGame.fen());
             setMoveHistory(prev => [...prev, `${botMove.from}-${botMove.to}`]);
+            setBlackTime(prev => Math.max(0, prev - 4));
           }
-        }, 800);
-        return () => clearTimeout(timer);
+        }, 4000);
+        return () => { if (botTimerRef.current) clearTimeout(botTimerRef.current); };
       }
     }
-  }, [fen, gameMode]);
+  }, [fen, gameMode, gameOver]);
 
   const getPieceStyle = (piece: Piece | undefined | null) => {
     if (!piece) return {} satisfies React.CSSProperties;
@@ -67,26 +117,25 @@ function ChessBoard() {
   };
   
   const handleSquareClick = (square: string) => {
+    if (gameOver) return;
     const sq = square as Square;
     if (selectedSquare === sq) { setSelectedSquare(null); setPossibleMoves([]); return; }
-    
+    const currentGame = new Chess(fen);
     if (selectedSquare) {
-      const newGame = new Chess(fen);
       try {
-        const move = newGame.move({ from: selectedSquare, to: sq, promotion: 'q' });
+        const move = currentGame.move({ from: selectedSquare, to: sq, promotion: 'q' });
         if (move) {
-          setFen(newGame.fen());
+          setFen(currentGame.fen());
           const notation = `${move.from}-${move.to}${move.promotion ? `=${move.promotion.toUpperCase()}` : ''}`;
           setMoveHistory(p => [...p, notation]);
           setPendingMove(notation);
           setSelectedSquare(null);
           setPossibleMoves([]);
+          if (gameMode === 'bot') setWhiteTime(prev => Math.max(0, prev - 1));
           return;
         }
       } catch {}
     }
-    
-    const currentGame = new Chess(fen);
     const piece = currentGame.get(sq);
     if (piece && piece.color === currentGame.turn() && (gameMode === 'pvp' || piece.color === 'w')) {
       setSelectedSquare(sq);
@@ -97,7 +146,7 @@ function ChessBoard() {
 
   const handleSendToBlockchain = () => {
     if (!pendingMove || !address || gameMode !== 'pvp') return;
-    writeContract({
+    writeContractResult.writeContract({
       address: CONFIG.GAME_CONTRACT_ADDRESS,
       abi: CHESS_GAME_ABI,
       functionName: 'makeMove',
@@ -109,6 +158,10 @@ function ChessBoard() {
     setFen(startGameWithBot());
     setSelectedSquare(null); setPossibleMoves([]);
     setMoveHistory([]); setPendingMove(null);
+    setWhiteTime(timeControl); setBlackTime(timeControl);
+    setGameOver(null);
+    if (timerRef.current) clearInterval(timerRef.current);
+    if (botTimerRef.current) clearTimeout(botTimerRef.current);
   };
 
   useEffect(() => { if (isTxSuccess && pendingMove) { console.log('✅ Saved:', txHash); setPendingMove(null); } }, [isTxSuccess, txHash, pendingMove]);
@@ -117,17 +170,30 @@ function ChessBoard() {
   const isPossibleMove = (sq: Square) => possibleMoves.includes(sq);
   const isSelected = (sq: Square) => selectedSquare === sq;
   const currentGame = new Chess(fen);
+  const isWhiteTurn = currentGame.turn() === 'w';
 
   return (
     <div style={{ marginTop: '24px', padding: '20px', background: '#1f2937', borderRadius: '16px', border: '1px solid #374151' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
         <h3 style={{ fontSize: '18px', fontWeight: 600, color: 'white' }}>♟️ Игровая доска</h3>
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
           <select value={gameMode} onChange={(e) => { setGameMode(e.target.value as 'bot' | 'pvp'); resetGame(); }} style={{ padding: '6px 12px', background: '#374151', color: 'white', border: '1px solid #4b5563', borderRadius: '6px', fontSize: '13px' }}>
             <option value="bot">🤖 Игра с ботом</option>
             <option value="pvp">👥 Игра с игроком</option>
           </select>
-          <span style={{ fontSize: '14px', color: '#9ca3af' }}>Ход: {currentGame.turn() === 'w' ? '⚪ Белые' : '⚫ Чёрные'}</span>
+          <select value={timeControl} onChange={(e) => setTimeControl(Number(e.target.value))} style={{ padding: '6px 12px', background: '#374151', color: 'white', border: '1px solid #4b5563', borderRadius: '6px', fontSize: '13px' }}>
+            {TIME_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+          </select>
+        </div>
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', padding: '8px 12px', background: '#111827', borderRadius: '8px' }}>
+        <div style={{ textAlign: 'left' }}>
+          <span style={{ fontSize: '12px', color: '#9ca3af' }}>⚪ Белые</span>
+          <p style={{ fontSize: '20px', fontWeight: 'bold', color: isWhiteTurn && !gameOver ? '#fbbf24' : '#22c55e', margin: 0 }}>{formatTime(whiteTime)}</p>
+        </div>
+        <div style={{ textAlign: 'right' }}>
+          <span style={{ fontSize: '12px', color: '#9ca3af' }}>⚫ Чёрные {gameMode === 'bot' ? '(бот)' : ''}</span>
+          <p style={{ fontSize: '20px', fontWeight: 'bold', color: !isWhiteTurn && !gameOver ? '#fbbf24' : '#22c55e', margin: 0 }}>{formatTime(blackTime)}</p>
         </div>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: '1px', background: '#374151', border: '2px solid #374151', borderRadius: '8px', maxWidth: '450px', margin: '0 auto' }}>
@@ -145,10 +211,11 @@ function ChessBoard() {
         )}
       </div>
       <div style={{ textAlign: 'center', marginTop: '16px' }}>
-        {currentGame.isCheckmate() && <p style={{ color: '#ef4444', fontWeight: 'bold' }}>♔ Шах и мат!</p>}
-        {currentGame.isDraw() && <p style={{ color: '#f59e0b', fontWeight: 'bold' }}>🤝 Ничья</p>}
-        {currentGame.inCheck() && !currentGame.isCheckmate() && <p style={{ color: '#fbbf24' }}>⚠️ Шах!</p>}
-        {gameMode === 'pvp' && pendingMove && (
+        {gameOver && <p style={{ color: '#ef4444', fontWeight: 'bold', fontSize: '18px' }}>{gameOver}</p>}
+        {currentGame.isCheckmate() && !gameOver && <p style={{ color: '#ef4444', fontWeight: 'bold' }}>♔ Шах и мат! Победили {currentGame.turn() === 'w' ? 'чёрные' : 'белые'}</p>}
+        {currentGame.isDraw() && !gameOver && <p style={{ color: '#f59e0b', fontWeight: 'bold' }}>🤝 Ничья</p>}
+        {currentGame.inCheck() && !currentGame.isCheckmate() && !gameOver && <p style={{ color: '#fbbf24' }}>⚠️ Шах!</p>}
+        {gameMode === 'pvp' && pendingMove && !gameOver && (
           <button onClick={handleSendToBlockchain} disabled={isTxPending || isConfirming} style={{ marginTop: '12px', padding: '8px 16px', background: '#10b981', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>
             {isTxPending ? '⏳ Подписание...' : '📡 В блокчейн'}
           </button>
@@ -166,18 +233,26 @@ export default function App() {
   const connectors = useConnectors();
   const [showModal, setShowModal] = useState(false);
   
-  // ✅ wagmi v2: data -> balance
-  const { data: balance, status: balanceStatus } = useBalance({
-    address: address, token: CONFIG.C4C_TOKEN_ADDRESS as `0x${string}`,
+  // 🔥 🔥 🔥 РЕШЕНИЕ: используем .data напрямую, без алиасов 🔥 🔥 🔥
+  const balanceResult = useBalance({
+    address: address,
+    token: CONFIG.C4C_TOKEN_ADDRESS as `0x${string}`,
     query: { enabled: !!address && !!chain?.id && chain.id === CONFIG.CHAIN_ID },
   });
+  const balance = balanceResult.data;
+  const balanceStatus = balanceResult.status;
 
   const metaMaskConnector = connectors.find(c => c.type === 'metaMask');
   const walletConnectConnector = connectors.find(c => c.type === 'walletConnect');
 
-  // 🔥 Стабильный ID (не пересоздаётся при рендере)
-  const [playerId] = useState(() => address || `guest_${Math.random().toString(36).slice(2, 10)}`);
-  const [opponentId] = useState(() => address ? undefined : `bot_${playerId.slice(-6)}`);
+  const [playerId] = useState(() => {
+    if (typeof window === 'undefined') return 'server';
+    return address || `guest_${Math.random().toString(36).slice(2, 10)}`;
+  });
+  const [opponentId] = useState(() => {
+    if (typeof window === 'undefined') return undefined;
+    return address ? undefined : `bot_${playerId.slice(-6)}`;
+  });
 
   if (!isConnected) {
     return (<>
@@ -195,7 +270,7 @@ export default function App() {
           </div>
         </div>
       )}
-      <ChatBox playerId={playerId} opponentId={opponentId} />
+      <ChatBoxDynamic playerId={playerId} opponentId={opponentId} />
     </>);
   }
 
@@ -233,7 +308,7 @@ export default function App() {
           <p style={{ marginTop: '4px' }}>Сеть: {CONFIG.CHAIN_NAME} (ID: {CONFIG.CHAIN_ID})</p>
         </footer>
       </div>
-      <ChatBox playerId={playerId} opponentId={opponentId} />
+      <ChatBoxDynamic playerId={playerId} opponentId={opponentId} />
     </main>
   );
 }
