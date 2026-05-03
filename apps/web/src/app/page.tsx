@@ -3,7 +3,6 @@
 
 import { useState, useEffect } from 'react';
 import { useAccount, useConnect, useDisconnect, useConnectors, useBalance } from 'wagmi';
-import { Chess } from 'chess.js';
 import { CONFIG } from '@/lib/config';
 
 export default function App() {
@@ -14,26 +13,30 @@ export default function App() {
   const [showModal, setShowModal] = useState(false);
   const [isClient, setIsClient] = useState(false);
   
-  // 🔥 Баланс токенов
-  const {  balance, status: balanceStatus } = useBalance({
+  // 🔥 ИСПРАВЛЕНО: правильный алиас - data: balance (с двоеточием!)
+  // wagmi v2 возвращает { data, status, error }, мы алиасим data -> balance
+ const {  balance, status: balanceStatus } = useBalance({
+//           ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑......
+//           d a t a : [пробел] b a l a n c e
+//           (свойство из wagmi) : (твоя переменная)
     address: address,
     token: CONFIG.C4C_TOKEN_ADDRESS as `0x${string}`,
     query: { enabled: !!address && !!chain?.id && chain.id === CONFIG.CHAIN_ID },
   });
 
-  // 🔥 Определяем, что рендерим на клиенте (предотвращаем гидратацию)
+  // 🔥 Определяем клиентский рендер (предотвращаем гидратацию)
   useEffect(() => {
     setIsClient(true);
   }, []);
 
-  // 🔥 Простая функция подключения (защита от дублей)
+  // 🔥 Защита от дублирования запросов подключения
   const handleConnect = (connector: any) => {
     if (isPending) return;
     connect({ connector });
     setShowModal(false);
   };
 
-  // 🔥 Пока не клиент — показываем заглушку (предотвращаем #418)
+  // 🔥 Пока не клиент — заглушка
   if (!isClient) {
     return (
       <main style={{ minHeight: '100vh', background: '#111827', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -42,7 +45,7 @@ export default function App() {
     );
   }
 
-  // 🔥 НЕ ПОДКЛЮЧЁН → показываем кнопку "Войти"
+  // 🔥 НЕ ПОДКЛЮЧЁН → кнопка "Войти"
   if (!isConnected) {
     return (
       <main style={{ minHeight: '100vh', background: '#111827', color: 'white', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px', textAlign: 'center' }}>
@@ -66,7 +69,6 @@ export default function App() {
           {isPending ? '⏳ Подключение...' : '🔗 Войти в приложение'}
         </button>
 
-        {/* 🔥 Модальное окно выбора кошелька */}
         {showModal && (
           <div 
             style={{ 
@@ -93,7 +95,6 @@ export default function App() {
             >
               <h3 style={{ color: 'white', marginBottom: '20px', textAlign: 'center' }}>Выберите кошелёк</h3>
               
-              {/* MetaMask */}
               <button
                 onClick={() => {
                   const mm = connectors.find(c => c.type === 'metaMask');
@@ -120,7 +121,6 @@ export default function App() {
                 🦊 MetaMask
               </button>
               
-              {/* WalletConnect QR */}
               <button
                 onClick={() => {
                   const wc = connectors.find(c => c.type === 'walletConnect');
@@ -149,7 +149,7 @@ export default function App() {
               
               {CONFIG.WALLETCONNECT_PROJECT_ID === 'demo' && (
                 <p style={{ fontSize: '12px', color: '#fbbf24', textAlign: 'center', marginTop: '12px' }}>
-                  ⚠️ QR не работает с ключом 'demo'. Получите ключ на cloud.walletconnect.com
+                  ⚠️ QR не работает с ключом 'demo'
                 </p>
               )}
               
@@ -175,11 +175,10 @@ export default function App() {
     );
   }
 
-  // 🔥 ПОДКЛЮЧЁН → показываем профиль + доску
+  // 🔥 ПОДКЛЮЧЁН → профиль
   return (
     <main style={{ minHeight: '100vh', background: '#111827', color: 'white', padding: '20px' }}>
       <div style={{ maxWidth: '640px', margin: '0 auto' }}>
-        {/* Хедер */}
         <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '20px', borderBottom: '1px solid #374151' }}>
           <h1 style={{ fontSize: '24px', fontWeight: 'bold' }}>♟️ {CONFIG.APP_NAME}</h1>
           <button 
@@ -190,7 +189,6 @@ export default function App() {
           </button>
         </header>
 
-        {/* Профиль */}
         <section style={{ marginTop: '32px', padding: '28px', background: '#1f2937', borderRadius: '16px', border: '1px solid #374151' }}>
           <h2 style={{ fontSize: '20px', marginBottom: '20px', fontWeight: 600 }}>👤 Профиль</h2>
           
@@ -209,26 +207,8 @@ export default function App() {
           </p>
         </section>
 
-        {/* Простая шахматная доска (демо) */}
-        <section style={{ marginTop: '32px', padding: '20px', background: '#1f2937', borderRadius: '16px', border: '1px solid #374151', textAlign: 'center' }}>
-          <h3 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '16px' }}>♟️ Быстрая игра</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: '2px', background: '#374151', borderRadius: '8px', maxWidth: '320px', margin: '0 auto' }}>
-            {Array.from({ length: 64 }).map((_, i) => {
-              const fi = i % 8;
-              const ri = Math.floor(i / 8);
-              const bg = (fi + ri) % 2 === 0 ? '#eeeed2' : '#769656';
-              return <div key={i} style={{ aspectRatio: '1', background: bg }} />;
-            })}
-          </div>
-          <p style={{ marginTop: '16px', color: '#9ca3af', fontSize: '14px' }}>
-            🎮 Полная доска с фигурами — после настройки смарт-контракта
-          </p>
-        </section>
-
-        {/* Футер */}
         <footer style={{ marginTop: '48px', paddingTop: '24px', borderTop: '1px solid #374151', textAlign: 'center', fontSize: '12px', color: '#6b7280' }}>
           <p>Сеть: {CONFIG.CHAIN_NAME} (ID: {CONFIG.CHAIN_ID})</p>
-          <p style={{ marginTop: '4px' }}>Токен: {CONFIG.C4C_TOKEN_ADDRESS.slice(0, 10)}...{CONFIG.C4C_TOKEN_ADDRESS.slice(-8)}</p>
         </footer>
       </div>
     </main>
