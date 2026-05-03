@@ -15,7 +15,6 @@ import { ProfileEditor } from '@/components/profile-editor';
 import { ClaimWinnings } from '@/components/claim-winnings';
 import { useGameStore } from '@/lib/game-store';
 import { formatC4C } from '@/lib/utils';
-// 🔥 ИСПРАВЛЕНО: STAKE_OPTIONS импортируется из @/types
 import { STAKE_OPTIONS } from '@/types';
 
 const CHESS_GAME_ABI = parseAbi(["function makeMove(string gameId, string moveNotation) external"]);
@@ -157,7 +156,7 @@ export default function App() {
   const [tab, setTab] = useState<'profile'|'lobby'|'friends'>('profile');
   const { currentPlayer } = useGameStore();
   
-  // 🔥 100% БЕЗОПАСНО
+  // 🔥 100% БЕЗОПАСНО: прямой доступ к .data
   const balRes = useBalance({ address, token: CONFIG.C4C_TOKEN_ADDRESS as `0x${string}`, query: { enabled: !!address && !!chain?.id && chain.id === CONFIG.CHAIN_ID } });
   const balance = balRes.data;
   const balStatus = balRes.status;

@@ -1,4 +1,6 @@
+// apps/web/src/components/create-game-form.tsx
 'use client';
+
 import { useState } from 'react';
 import { useAccount, useWriteContract } from 'wagmi';
 import { parseAbi } from 'viem';
@@ -26,11 +28,12 @@ export function CreateGameForm({ onClose }: { onClose: () => void }) {
     addGame({ id: gameId, creatorId: address, whitePlayer: address, timeControl: time, boardTheme: board, stake, status: 'staked', createdAt: Date.now() });
     if (currentPlayer) updatePlayer({ boardTheme: board, language: lang });
 
+    // 🔥 ИСПРАВЛЕНО: конвертируем number → bigint для контракта
     depRes.writeContract({
       address: CONFIG.GAME_CONTRACT_ADDRESS,
       abi: DEPOSIT_ABI,
       functionName: 'depositStake',
-      args: [gameId, stake]
+      args: [gameId, BigInt(stake)]
     });
   };
 
