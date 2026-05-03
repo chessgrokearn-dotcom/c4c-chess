@@ -1,10 +1,11 @@
 // apps/web/src/app/page.tsx
 'use client';
-import { useState, useEffect, type CSSProperties } from 'react';
+
+import { useState, useEffect } from 'react';
 import { useAccount, useConnect, useDisconnect, useConnectors, useBalance, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { parseAbi } from 'viem';
 import { Chess, type Square, type Piece } from 'chess.js';
-import { CONFIG, STAKE_CONFIG, TIME_CONFIG, BSC_CHAIN_ID } from '@/lib/config';
+import { CONFIG } from '@/lib/config'; // 🔥 ИСПРАВЛЕНО: импортируем только CONFIG
 
 const CHESS_GAME_ABI = parseAbi([
   "function makeMove(string gameId, string moveNotation) external",
@@ -20,19 +21,23 @@ function ChessBoard() {
   const [pendingMove, setPendingMove] = useState<string | null>(null);
   const { address } = useAccount();
   
-  // ✅ ИСПРАВЛЕНО: wagmi v2 возвращает data, а не txHash/balance напрямую
-  const { writeContract, data: txHash, isPending: isTxPending } = useWriteContract();
+  const { writeContract,  txHash, isPending: isTxPending } = useWriteContract();
   const { isLoading: isConfirming, isSuccess: isTxSuccess } = useWaitForTransactionReceipt({ hash: txHash });
 
-  const getPieceStyle = (piece: Piece | undefined | null): CSSProperties => {
-    if (!piece) return {};
+  // 🔥 ИСПРАВЛЕНО: используем satisfies для строгой типизации
+  const getPieceStyle = (piece: Piece | undefined | null) => {
+    if (!piece) return {} satisfies React.CSSProperties; // ✅ Пустой объект с проверкой типа
+    
     const isWhite = piece.color === 'w';
     return {
-      fontSize: '44px', fontWeight: 900, color: isWhite ? '#ffffff' : '#111827',
+      fontSize: '44px',
+      fontWeight: 900,
+      color: isWhite ? '#ffffff' : '#111827',
       textShadow: isWhite ? '0 2px 4px rgba(0,0,0,0.6)' : '0 2px 4px rgba(255,255,255,0.3)',
       filter: isWhite ? 'drop-shadow(0 1px 2px rgba(0,0,0,0.8))' : 'drop-shadow(0 1px 2px rgba(255,255,255,0.4))',
-      userSelect: 'none', lineHeight: 1
-    };
+      userSelect: 'none',
+      lineHeight: 1,
+    } satisfies React.CSSProperties; // ✅ Явная проверка типа
   };
 
   const getPieceSymbol = (piece: Piece | undefined | null) => {
@@ -124,8 +129,7 @@ export default function App() {
   const connectors = useConnectors();
   const [showModal, setShowModal] = useState(false);
   
-  // ✅ ИСПРАВЛЕНО: data: balance
-  const { data: balance, status: balanceStatus } = useBalance({
+  const {  balance, status: balanceStatus } = useBalance({
     address: address, token: CONFIG.C4C_TOKEN_ADDRESS as `0x${string}`,
     query: { enabled: !!address && !!chain?.id && chain.id === CONFIG.CHAIN_ID },
   });
