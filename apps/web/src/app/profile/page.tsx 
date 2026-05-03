@@ -5,13 +5,12 @@ import { useState, useEffect } from 'react';
 import { useAccount, useConnect, useDisconnect, useConnectors, useBalance, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { parseAbi } from 'viem';
 import { Chess, type Square, type Piece } from 'chess.js';
-import { CONFIG } from '@/lib/config'; // 🔥 ИСПРАВЛЕНО: импортируем только CONFIG
+import { CONFIG } from '@/lib/config';
 
 const CHESS_GAME_ABI = parseAbi([
   "function makeMove(string gameId, string moveNotation) external",
   "function getGameMoves(string gameId) external view returns (string[])"
 ]);
-const CHESS_GAME_ADDRESS = '0x0000000000000000000000000000000000000000' as const;
 
 function ChessBoard() {
   const [game] = useState(() => new Chess());
@@ -21,23 +20,20 @@ function ChessBoard() {
   const [pendingMove, setPendingMove] = useState<string | null>(null);
   const { address } = useAccount();
   
+  // 🔥 ИСПРАВЛЕНО: wagmi v2 возвращает { data, isPending, error }
+  // ✅ ПРАВИЛЬНЫЙ СИНТАКСИС:  (двоеточие обязательно!)
   const { writeContract,  txHash, isPending: isTxPending } = useWriteContract();
   const { isLoading: isConfirming, isSuccess: isTxSuccess } = useWaitForTransactionReceipt({ hash: txHash });
 
-  // 🔥 ИСПРАВЛЕНО: используем satisfies для строгой типизации
   const getPieceStyle = (piece: Piece | undefined | null) => {
-    if (!piece) return {} satisfies React.CSSProperties; // ✅ Пустой объект с проверкой типа
-    
+    if (!piece) return {} satisfies React.CSSProperties;
     const isWhite = piece.color === 'w';
     return {
-      fontSize: '44px',
-      fontWeight: 900,
-      color: isWhite ? '#ffffff' : '#111827',
+      fontSize: '44px', fontWeight: 900, color: isWhite ? '#ffffff' : '#111827',
       textShadow: isWhite ? '0 2px 4px rgba(0,0,0,0.6)' : '0 2px 4px rgba(255,255,255,0.3)',
       filter: isWhite ? 'drop-shadow(0 1px 2px rgba(0,0,0,0.8))' : 'drop-shadow(0 1px 2px rgba(255,255,255,0.4))',
-      userSelect: 'none',
-      lineHeight: 1,
-    } satisfies React.CSSProperties; // ✅ Явная проверка типа
+      userSelect: 'none', lineHeight: 1,
+    } satisfies React.CSSProperties;
   };
 
   const getPieceSymbol = (piece: Piece | undefined | null) => {
@@ -72,8 +68,10 @@ function ChessBoard() {
   const handleSendToBlockchain = () => {
     if (!pendingMove || !address) return;
     writeContract({
-      address: CHESS_GAME_ADDRESS, abi: CHESS_GAME_ABI,
-      functionName: 'makeMove', args: [`game_${address.slice(2,10)}_${Date.now()}`, pendingMove],
+      address: CONFIG.GAME_CONTRACT_ADDRESS,
+      abi: CHESS_GAME_ABI,
+      functionName: 'makeMove',
+      args: [`game_${address.slice(2,10)}_${Date.now()}`, pendingMove],
     });
   };
 
@@ -129,6 +127,8 @@ export default function App() {
   const connectors = useConnectors();
   const [showModal, setShowModal] = useState(false);
   
+  // ✅ wagmi v2: useBalance возвращает { data, status, error }
+  // ✅ ПРАВИЛЬНЫЙ СИНТАКСИС:  (двоеточие обязательно!)
   const {  balance, status: balanceStatus } = useBalance({
     address: address, token: CONFIG.C4C_TOKEN_ADDRESS as `0x${string}`,
     query: { enabled: !!address && !!chain?.id && chain.id === CONFIG.CHAIN_ID },
@@ -163,18 +163,61 @@ export default function App() {
           <h1 style={{ fontSize: '24px', fontWeight: 'bold' }}>♟️ {CONFIG.APP_NAME}</h1>
           <button onClick={() => { disconnect(); setShowModal(false); }} style={{ padding: '10px 20px', background: '#ef4444', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>Выйти</button>
         </header>
+        
+        {/* Профиль + Кнопка покупки токена */}
         <section style={{ marginTop: '32px', padding: '28px', background: '#1f2937', borderRadius: '16px', border: '1px solid #374151' }}>
           <h2 style={{ fontSize: '20px', marginBottom: '20px', fontWeight: 600 }}>👤 Профиль</h2>
           <p style={{ fontSize: '13px', color: '#9ca3af', marginBottom: '8px' }}>Адрес кошелька</p>
           <p style={{ fontFamily: 'monospace', fontSize: '14px', color: '#22c55e', wordBreak: 'break-all', background: '#111827', padding: '12px', borderRadius: '8px' }}>{address}</p>
+          
           <p style={{ marginTop: '20px', fontSize: '13px', color: '#9ca3af', marginBottom: '8px' }}>Баланс {CONFIG.APP_NAME}</p>
           <p style={{ fontSize: '28px', fontWeight: 'bold', color: '#f59e0b' }}>
             {balanceStatus === 'pending' && '⏳ Загрузка...'}
             {balanceStatus === 'error' && '❌ Ошибка'}
             {balanceStatus === 'success' && balance?.formatted ? `${parseFloat(balance.formatted).toFixed(2)} C4C` : '0.00 C4C'}
           </p>
+
+          {/* 🔥 КНОПКА: ПОКУПКА C4C */}
+          <div style={{ marginTop: '24px', padding: '16px', background: 'linear-gradient(135deg, #ec4899, #db2777)', borderRadius: '12px', border: '1px solid #f472b6' }}>
+            <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'white', marginBottom: '8px' }}>💰 Купить C4C Tokens</h3>
+            <p style={{ fontSize: '13px', color: '#fff', opacity: 0.9, marginBottom: '12px', lineHeight: 1.4 }}>
+              Приобретайте игровые токены на Pink.Meme для участия в рейтинговых играх и получения наград.
+            </p>
+            <a 
+              href={CONFIG.C4C_BUY_URL} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '10px 20px',
+                background: 'white',
+                color: '#db2777',
+                textDecoration: 'none',
+                borderRadius: '8px',
+                fontWeight: 600,
+                fontSize: '14px',
+                transition: 'transform 0.1s'
+              }}
+              onMouseOver={(e) => (e.currentTarget.style.transform = 'translateY(-2px)')}
+              onMouseOut={(e) => (e.currentTarget.style.transform = 'translateY(0)')}
+            >
+              <span>🛒</span> Купить на Pink.Meme
+            </a>
+            <p style={{ fontSize: '11px', color: '#fff', opacity: 0.7, marginTop: '8px' }}>
+              Адрес токена: <span style={{ fontFamily: 'monospace' }}>{CONFIG.C4C_TOKEN_ADDRESS.slice(0, 10)}...{CONFIG.C4C_TOKEN_ADDRESS.slice(-8)}</span>
+            </p>
+          </div>
         </section>
+
+        {/* Шахматная доска */}
         <ChessBoard />
+
+        <footer style={{ marginTop: '48px', paddingTop: '24px', borderTop: '1px solid #374151', textAlign: 'center', fontSize: '12px', color: '#6b7280' }}>
+          <p>Игровой контракт: <span style={{ fontFamily: 'monospace' }}>{CONFIG.GAME_CONTRACT_ADDRESS.slice(0, 10)}...{CONFIG.GAME_CONTRACT_ADDRESS.slice(-8)}</span></p>
+          <p style={{ marginTop: '4px' }}>Сеть: {CONFIG.CHAIN_NAME} (ID: {CONFIG.CHAIN_ID})</p>
+        </footer>
       </div>
     </main>
   );
