@@ -33,7 +33,6 @@ function ChessBoard() {
   const [over, setOver] = useState<string | null>(null);
   const { address } = useAccount();
   
-  // 🔥 100% БЕЗОПАСНО: прямой доступ к .data, без алиасов с ":"
   const writeRes = useWriteContract();
   const waitRes = useWaitForTransactionReceipt({ hash: writeRes.data });
   const isConfirming = waitRes.isLoading;
@@ -147,7 +146,7 @@ function ChessBoard() {
 
 export default function App() {
   const { address, isConnected, chain } = useAccount();
-  const { connect, isPending } = useConnect();
+  const { connect, isPending: isConnecting } = useConnect();
   const { disconnect } = useDisconnect();
   const connectors = useConnectors();
   const [showModal, setShowModal] = useState(false);
@@ -165,18 +164,58 @@ export default function App() {
 
   useEffect(() => { if(currentPlayer?.theme) document.documentElement.setAttribute('data-theme', currentPlayer.theme); }, [currentPlayer?.theme]);
 
+  // 🔥 Защита от повторных запросов подключения
+  const handleConnect = (connector: any) => {
+    if (isConnecting) return; // Игнорируем, если уже идёт подключение
+    connect({ connector });
+  };
+
   if (!isConnected) return (
     <main style={{ minHeight: '100vh', background: '#111827', color: 'white', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
       <h1 style={{ fontSize: '32px', marginBottom: '16px' }}>♟️ {CONFIG.APP_NAME}</h1>
-      <button onClick={() => setShowModal(true)} style={{ padding: '14px 32px', background: '#f59e0b', color: 'white', border: 'none', borderRadius: '10px', fontSize: '18px', cursor: 'pointer' }}>🔗 Войти</button>
+      <button 
+        onClick={() => setShowModal(true)} 
+        disabled={isConnecting}
+        style={{ 
+          padding: '14px 32px', 
+          background: isConnecting ? '#9ca3af' : '#f59e0b', 
+          color: 'white', 
+          border: 'none', 
+          borderRadius: '10px', 
+          fontSize: '18px', 
+          cursor: isConnecting ? 'not-allowed' : 'pointer',
+          opacity: isConnecting ? 0.7 : 1
+        }}
+      >
+        {isConnecting ? '⏳ Подключение...' : '🔗 Войти'}
+      </button>
       {showModal && <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }} onClick={() => setShowModal(false)}>
         <div style={{ background: '#1f2937', padding: '24px', borderRadius: '16px' }} onClick={e => e.stopPropagation()}>
           {connectors.filter(c => c.type !== 'injected' && c.type !== 'walletConnect').map((c, i) => (
-            <button key={i} onClick={() => { connect({ connector: c }); setShowModal(false); }} style={{ display: 'block', width: '100%', padding: '12px', margin: '8px 0', background: i===0?'#f59e0b':'#3b82f6', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>🔗 {c.name}</button>
+            <button 
+              key={i} 
+              onClick={() => { handleConnect(c); setShowModal(false); }} 
+              disabled={isConnecting}
+              style={{ 
+                display: 'block', 
+                width: '100%', 
+                padding: '12px', 
+                margin: '8px 0', 
+                background: i===0?'#f59e0b':'#3b82f6', 
+                color: 'white', 
+                border: 'none', 
+                borderRadius: '8px', 
+                cursor: isConnecting ? 'not-allowed' : 'pointer',
+                opacity: isConnecting ? 0.7 : 1
+              }}
+            >
+              {isConnecting ? '⏳...' : `🔗 ${c.name}`}
+            </button>
           ))}
         </div>
       </div>}
-      <div suppressHydrationWarning><ChatBoxDynamic playerId={playerId} opponentId={undefined} /></div>
+      {/* 🔥 Чат отключается автоматически, если нет сервера */}
+      <ChatBoxDynamic playerId={playerId} opponentId={undefined} />
     </main>
   );
 
