@@ -14,7 +14,7 @@ import {
   BOARD_THEMES, THEMES, formatTime, formatC4C, getBotMove
 } from '@/lib/config';
 
-// 🔹 Wagmi config (исправлено: dappMetadata: и metadata:)
+// 🔹 Wagmi config
 const wagmiConfig = createConfig({
   chains: [bsc],
   connectors: [
@@ -178,8 +178,21 @@ function ChessApp() {
   
   const g = new Chess(fen);
   const isW = g.turn() === 'w';
-  const getSym = (p: Piece | null) => p ? ({p:{w:'♙',b:'♟'},n:{w:'♘',b:'♞'},b:{w:'♗',b:'♝'},r:{w:'♖',b:'♜'},q:{w:'♕',b:'♛'},k:{w:'♔',b:'♚'}} as any)[p.type]?.[p.color] : '';
-  const getPieceColor = (p: Piece | null) => p?.color === 'w' ? '#111827' : '#ffffff';
+  
+  // 🔥 ИСПРАВЛЕНО: тип аргумента - теперь принимает undefined
+  const getSym = (p: Piece | null | undefined) => {
+    if (!p) return '';
+    const symbols: Record<string, Record<'w'|'b', string>> = {
+      p: { w: '♙', b: '♟' }, n: { w: '♘', b: '♞' }, b: { w: '♗', b: '♝' },
+      r: { w: '♖', b: '♜' }, q: { w: '♕', b: '♛' }, k: { w: '♔', b: '♚' }
+    };
+    return symbols[p.type]?.[p.color] || '';
+  };
+  
+  const getPieceColor = (p: Piece | null | undefined) => {
+    if (!p) return '#fff';
+    return p.color === 'w' ? '#111827' : '#ffffff';
+  };
 
   if (!isClient) return <main style={{ minHeight: '100vh', background: '#111827', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><p>⏳ Загрузка...</p></main>;
 
@@ -246,7 +259,8 @@ function ChessApp() {
           
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 2, background: '#374151', borderRadius: 8, maxWidth: 320, margin: '0 auto' }}>
             {['8','7','6','5','4','3','2','1'].map((r, ri) => ['a','b','c','d','e','f','g','h'].map((f, fi) => {
-              const sq = `${f}${r}` as Square; const p = g.get(sq);
+              const sq = `${f}${r}` as Square; 
+              const p = g.get(sq); // 🔥 Возвращает Piece | undefined
               const theme = BOARD_THEMES[boardTheme as keyof typeof BOARD_THEMES];
               const bg = (fi+ri)%2===0 ? theme.light : theme.dark;
               return (
