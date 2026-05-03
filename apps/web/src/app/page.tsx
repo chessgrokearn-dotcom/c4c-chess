@@ -5,9 +5,8 @@ import { useState, useEffect, useRef } from 'react';
 import { createConfig, http, WagmiProvider } from 'wagmi';
 import { bsc } from 'wagmi/chains';
 import { walletConnect, metaMask } from 'wagmi/connectors';
-import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
-import { useAccount, useConnect, useDisconnect, useConnectors, useBalance, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
-import { parseAbi } from 'viem';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { useAccount, useConnect, useDisconnect, useConnectors, useBalance } from 'wagmi';
 import { Chess, type Square, type Piece } from 'chess.js';
 import {
   C4C_TOKEN_ADDRESS, GAME_CONTRACT_ADDRESS, CHAIN_ID, CHAIN_NAME, RPC_URL,
@@ -15,15 +14,20 @@ import {
   BOARD_THEMES, THEMES, formatTime, formatC4C, getBotMove
 } from '@/lib/config';
 
-// 🔹 Wagmi config (внутри файла, чтобы не создавать отдельный)
+// 🔹 Wagmi config (исправлено: dappMetadata: и metadata:)
 const wagmiConfig = createConfig({
   chains: [bsc],
   connectors: [
-    metaMask({ dappMeta { name: APP_NAME, url: typeof window !== 'undefined' ? window.location.origin : 'https://c4c-chess.vercel.app' } }),
+    metaMask({ 
+      dappMetadata: { 
+        name: APP_NAME, 
+        url: typeof window !== 'undefined' ? window.location.origin : 'https://c4c-chess.vercel.app' 
+      } 
+    }),
     walletConnect({
       projectId: WALLETCONNECT_PROJECT_ID,
       showQrModal: true,
-      meta {
+      metadata: {
         name: APP_NAME,
         description: APP_DESCRIPTION,
         url: typeof window !== 'undefined' ? window.location.origin : 'https://c4c-chess.vercel.app',
@@ -35,9 +39,8 @@ const wagmiConfig = createConfig({
 });
 
 const queryClient = new QueryClient();
-const CHESS_ABI = parseAbi(["function makeMove(string gameId, string moveNotation) external"]);
 
-// 🔹 Вспомогательные компоненты (внутри того же файла)
+// 🔹 Вспомогательные компоненты
 function ChatBox({ playerId }: { playerId: string }) {
   const [open, setOpen] = useState(false);
   const [msgs, setMsgs] = useState<{id:string;text:string;sender:string}[]>([]);
@@ -91,7 +94,7 @@ function BoardSelector({ value, onChange }: { value: string; onChange: (t: strin
   );
 }
 
-// 🔹 Основной компонент страницы
+// 🔹 Основной компонент
 function ChessApp() {
   const { address, isConnected, chain } = useAccount();
   const { connect, isPending } = useConnect();
@@ -102,7 +105,6 @@ function ChessApp() {
   const [isClient, setIsClient] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   
-  // 🔥 Состояния игры
   const [fen, setFen] = useState<string>(() => new Chess().fen());
   const [selected, setSelected] = useState<Square | null>(null);
   const [possible, setPossible] = useState<Square[]>([]);
@@ -113,7 +115,7 @@ function ChessApp() {
   const [over, setOver] = useState<string | null>(null);
   const [boardTheme, setBoardTheme] = useState('classic');
   
-  // 🔥 Баланс (ПРЯМОЙ ДОСТУП К .data — БЕЗ АЛИАСОВ!)
+  // 🔥 Баланс: прямой доступ к .data (без алиасов!)
   const balanceResult = useBalance({
     address: address,
     token: C4C_TOKEN_ADDRESS as `0x${string}`,
@@ -122,10 +124,7 @@ function ChessApp() {
   const balance = balanceResult.data;
   const balanceStatus = balanceResult.status;
 
-  // 🔥 Клиентский рендер
   useEffect(() => { setIsClient(true); }, []);
-
-  // 🔥 Таймеры
   useEffect(() => { setWTime(timeCtrl); setBTime(timeCtrl); setOver(null); }, [timeCtrl]);
 
   useEffect(() => {
@@ -137,7 +136,6 @@ function ChessApp() {
     return () => clearInterval(t);
   }, [fen, wTime, bTime, over]);
 
-  // 🔥 Бот (4 секунды задержка)
   useEffect(() => {
     if (mode === 'bot' && !over) {
       const g = new Chess(fen);
@@ -152,7 +150,6 @@ function ChessApp() {
     }
   }, [fen, mode, over]);
 
-  // 🔥 Подключение
   const handleConnect = async (connector: any) => {
     if (isPending || isConnecting) return;
     setIsConnecting(true);
@@ -161,7 +158,6 @@ function ChessApp() {
     finally { setIsConnecting(false); }
   };
 
-  // 🔥 Ход
   const click = (sq: string) => {
     if (over) return;
     const s = sq as Square;
@@ -185,10 +181,8 @@ function ChessApp() {
   const getSym = (p: Piece | null) => p ? ({p:{w:'♙',b:'♟'},n:{w:'♘',b:'♞'},b:{w:'♗',b:'♝'},r:{w:'♖',b:'♜'},q:{w:'♕',b:'♛'},k:{w:'♔',b:'♚'}} as any)[p.type]?.[p.color] : '';
   const getPieceColor = (p: Piece | null) => p?.color === 'w' ? '#111827' : '#ffffff';
 
-  // 🔥 Заглушка
   if (!isClient) return <main style={{ minHeight: '100vh', background: '#111827', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><p>⏳ Загрузка...</p></main>;
 
-  // 🔥 НЕ ПОДКЛЮЧЁН
   if (!isConnected) {
     return (
       <main style={{ minHeight: '100vh', background: '#111827', color: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 20, textAlign: 'center' }}>
@@ -211,7 +205,6 @@ function ChessApp() {
     );
   }
 
-  // 🔥 ПОДКЛЮЧЁН
   return (
     <main style={{ minHeight: '100vh', background: '#111827', color: '#fff', padding: 20 }}>
       <div style={{ maxWidth: 640, margin: '0 auto' }}>
@@ -282,7 +275,6 @@ function ChessApp() {
   );
 }
 
-// 🔹 Модальное окно создания игры
 function CreateGameModal({ onClose, boardTheme, setBoardTheme }: { onClose: () => void; boardTheme: string; setBoardTheme: (t: string) => void }) {
   const [time, setTime] = useState(900);
   const [stake, setStake] = useState(50000);
@@ -316,7 +308,6 @@ function CreateGameModal({ onClose, boardTheme, setBoardTheme }: { onClose: () =
   );
 }
 
-// 🔹 Root компонент с провайдерами
 export default function Page() {
   return (
     <WagmiProvider config={wagmiConfig}>
