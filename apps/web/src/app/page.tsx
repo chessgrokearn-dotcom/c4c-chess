@@ -179,7 +179,7 @@ function ChessApp() {
   const g = new Chess(fen);
   const isW = g.turn() === 'w';
   
-  // 🔥 ИСПРАВЛЕНО: тип аргумента - теперь принимает undefined
+  // 🔥 Типы: Piece | null | undefined (совместимость с chess.js)
   const getSym = (p: Piece | null | undefined) => {
     if (!p) return '';
     const symbols: Record<string, Record<'w'|'b', string>> = {
@@ -260,7 +260,7 @@ function ChessApp() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 2, background: '#374151', borderRadius: 8, maxWidth: 320, margin: '0 auto' }}>
             {['8','7','6','5','4','3','2','1'].map((r, ri) => ['a','b','c','d','e','f','g','h'].map((f, fi) => {
               const sq = `${f}${r}` as Square; 
-              const p = g.get(sq); // 🔥 Возвращает Piece | undefined
+              const p = g.get(sq);
               const theme = BOARD_THEMES[boardTheme as keyof typeof BOARD_THEMES];
               const bg = (fi+ri)%2===0 ? theme.light : theme.dark;
               return (
