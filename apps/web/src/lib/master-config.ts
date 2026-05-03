@@ -53,15 +53,16 @@ export const STAKE_OPTIONS = [
   { label: '1 000 000', value: 1000000 },
 ] as const;
 
+// 🔥 ИСПРАВЛЕНО: добавлено 'as const' к массивам profileMatch для корректного вывода типов
 export const BOARD_THEMES = {
-  classic: { name: 'Классика', light: '#eeeed2', dark: '#769656', profileMatch: ['default', 'dark'] },
-  green: { name: 'Зелёная', light: '#b5cf9e', dark: '#3a5f2a', profileMatch: ['forest'] },
-  blue: { name: 'Синяя', light: '#c9e4f7', dark: '#2b5f8c', profileMatch: ['ocean'] },
-  wood: { name: 'Дерево', light: '#f0d9b5', dark: '#b58863', profileMatch: ['default', 'royal'] },
-  marble: { name: 'Мрамор', light: '#f8f8f8', dark: '#4a4a4a', profileMatch: ['light', 'cyber'] },
-  neon: { name: 'Неон', light: '#00ffff', dark: '#ff00ff', profileMatch: ['cyber'] },
-  minimal: { name: 'Минимал', light: '#ffffff', dark: '#000000', profileMatch: ['light', 'dark'] },
-  retro: { name: 'Ретро', light: '#fff8dc', dark: '#8b4513', profileMatch: ['sunset', 'royal'] },
+  classic: { name: 'Классика', light: '#eeeed2', dark: '#769656', profileMatch: ['default', 'dark'] as const },
+  green: { name: 'Зелёная', light: '#b5cf9e', dark: '#3a5f2a', profileMatch: ['forest'] as const },
+  blue: { name: 'Синяя', light: '#c9e4f7', dark: '#2b5f8c', profileMatch: ['ocean'] as const },
+  wood: { name: 'Дерево', light: '#f0d9b5', dark: '#b58863', profileMatch: ['default', 'royal'] as const },
+  marble: { name: 'Мрамор', light: '#f8f8f8', dark: '#4a4a4a', profileMatch: ['light', 'cyber'] as const },
+  neon: { name: 'Неон', light: '#00ffff', dark: '#ff00ff', profileMatch: ['cyber'] as const },
+  minimal: { name: 'Минимал', light: '#ffffff', dark: '#000000', profileMatch: ['light', 'dark'] as const },
+  retro: { name: 'Ретро', light: '#fff8dc', dark: '#8b4513', profileMatch: ['sunset', 'royal'] as const },
 } as const;
 
 export const PROFILE_THEMES = {
@@ -117,10 +118,13 @@ export function getBotMove(moves: any[]): any {
   ];
 }
 
+// 🔥 ИСПРАВЛЕНО: приведение типа profileMatch к string[] для метода includes
 export function getBoardThemeForProfile(profileTheme: keyof typeof PROFILE_THEMES): keyof typeof BOARD_THEMES {
   const profile = PROFILE_THEMES[profileTheme];
-  for (const [boardId, board] of Object.entries(BOARD_THEMES) as [keyof typeof BOARD_THEMES, typeof BOARD_THEMES[keyof typeof BOARD_THEMES]][]) {
-    if (board.profileMatch?.includes(profileTheme)) return boardId;
+  for (const [boardId, board] of Object.entries(BOARD_THEMES)) {
+    if (board.profileMatch && (board.profileMatch as readonly string[]).includes(profileTheme)) {
+      return boardId as keyof typeof BOARD_THEMES;
+    }
   }
   return profile.fallbackBoard as keyof typeof BOARD_THEMES;
 }
@@ -172,7 +176,7 @@ export function createWagmiConfig() {
     chains: [bsc],
     connectors: [
       metaMask({ 
-        dappMetadata: { 
+        dappMeta { 
           name: APP_NAME, 
           url: typeof window !== 'undefined' ? window.location.origin : 'https://c4c-chess.vercel.app' 
         },
@@ -184,7 +188,7 @@ export function createWagmiConfig() {
       walletConnect({
         projectId: WALLETCONNECT_PROJECT_ID,
         showQrModal: true,
-        metadata: {
+        meta {
           name: APP_NAME,
           description: APP_DESCRIPTION,
           url: typeof window !== 'undefined' ? window.location.origin : 'https://c4c-chess.vercel.app',
