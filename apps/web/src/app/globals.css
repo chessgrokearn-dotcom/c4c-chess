@@ -89,7 +89,6 @@ input:focus, select:focus, textarea:focus {
 ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
 
-/* Темы профиля */
 [data-theme='dark'] { --bg: #030712; --text: #f3f4f6; --accent: #6366f1; --card: #1f2937; }
 [data-theme='light'] { --bg: #f9fafb; --text: #111827; --accent: #059669; --card: #ffffff; }
 [data-theme='ocean'] { --bg: #0c4a6e; --text: #f0f9ff; --accent: #38bdf8; --card: #1e3a5f; }

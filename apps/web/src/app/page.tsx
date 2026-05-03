@@ -2,47 +2,30 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { createConfig, http, WagmiProvider } from 'wagmi';
-import { bsc } from 'wagmi/chains';
-import { walletConnect, metaMask } from 'wagmi/connectors';
+import { WagmiProvider } from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAccount, useConnect, useDisconnect, useConnectors, useBalance } from 'wagmi';
 import { Chess, type Square, type Piece } from 'chess.js';
+
+// 🔥 ИМПОРТ ВСЕГО ИЗ MASTER-CONFIG (через config.ts)
 import {
+  // Константы
   C4C_TOKEN_ADDRESS, GAME_CONTRACT_ADDRESS, CHAIN_ID, CHAIN_NAME, RPC_URL,
   APP_NAME, APP_DESCRIPTION, WALLETCONNECT_PROJECT_ID, C4C_BUY_URL, HOW_TO_PLAY,
   TIME_OPTIONS, STAKE_OPTIONS, BOARD_THEMES, PROFILE_THEMES, LANGUAGES,
+  // Утилиты
   formatTime, formatC4C, getBotMove,
-  type BoardThemeId, type ProfileThemeId, type LanguageCode, type PlayerProfile, type Game, type Friend, type GameInvite
+  // Типы
+  type BoardThemeId, type ProfileThemeId, type LanguageCode, type PlayerProfile, type Game, type Friend, type GameInvite,
+  // 🔥 ФАБРИКА CONFIG — исправляй только в master-config.ts!
+  createWagmiConfig,
 } from '@/lib/config';
 
-// 🔹 Wagmi config — ИСПРАВЛЕНО: metadata: и dappMetadata: с двоеточиями!
-const wagmiConfig = createConfig({
-  chains: [bsc],
-  connectors: [
-    metaMask({ 
-      dappMetadata: { 
-        name: APP_NAME, 
-        url: typeof window !== 'undefined' ? window.location.origin : 'https://c4c-chess.vercel.app' 
-      } 
-    }),
-    walletConnect({
-      projectId: WALLETCONNECT_PROJECT_ID,
-      showQrModal: true,
-      metadata: {
-        name: APP_NAME,
-        description: APP_DESCRIPTION,
-        url: typeof window !== 'undefined' ? window.location.origin : 'https://c4c-chess.vercel.app',
-        icons: ['https://avatars.githubusercontent.com/u/37784886'],
-      },
-    }),
-  ],
-  transports: { [bsc.id]: http(RPC_URL) },
-});
-
+// 🔥 СОЗДАЁМ CONFIG ЧЕРЕЗ ФАБРИКУ (не пишем вручную!)
+const wagmiConfig = createWagmiConfig();
 const queryClient = new QueryClient();
 
-// 🔹 Вспомогательные компоненты
+// 🔹 Вспомогательные компоненты (импортируют из master-config)
 function ChatBox({ playerId }: { playerId: string }) {
   const [open, setOpen] = useState(false);
   const [msgs, setMsgs] = useState<{id:string;text:string;sender:string}[]>([]);
@@ -437,7 +420,7 @@ function ChessApp() {
 
       {showCreate && <CreateGameModal onClose={() => setShowCreate(false)} boardTheme={boardTheme} setBoardTheme={setBoardTheme} timeCtrl={timeCtrl} setTimeCtrl={setTimeCtrl} stake={stake} setStake={setStake} onCreate={createGame} />}
       {showLobby && <GameLobby games={games} onJoin={joinGame} onClose={() => setShowLobby(false)} />}
-      {showFriends && <FriendsList friends={friends} onClose={() => setShowFriends(false)} />}
+      {showFriends && <FriendsList friends={friends} setFriends={setFriends} onClose={() => setShowFriends(false)} />}
       {showProfile && <ProfileModal profile={profile} onUpdate={updateProfile} onClose={() => setShowProfile(false)} />}
       
       <ChatBox playerId={address || 'guest'} />
@@ -445,6 +428,7 @@ function ChessApp() {
   );
 }
 
+// 🔹 Модальные окна (используют константы из master-config)
 function CreateGameModal({ onClose, boardTheme, setBoardTheme, timeCtrl, setTimeCtrl, stake, setStake, onCreate }: any) {
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={onClose}>
@@ -505,7 +489,7 @@ function GameLobby({ games, onJoin, onClose }: { games: Game[]; onJoin: (id:stri
   );
 }
 
-function FriendsList({ friends, onClose }: { friends: Friend[]; onClose: ()=>void }) {
+function FriendsList({ friends, setFriends, onClose }: { friends: Friend[]; setFriends: React.Dispatch<React.SetStateAction<Friend[]>>; onClose: ()=>void }) {
   const [newFriend, setNewFriend] = useState('');
   
   const addFriend = () => {
