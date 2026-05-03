@@ -9,7 +9,6 @@ import { CONFIG } from "@/lib/config";
 
 const inter = Inter({ subsets: ["latin", "cyrillic"] });
 
-// 🔥 ИСПРАВЛЕНО: было "meta Metadata", стало "metadata: Metadata"
 export const metadata: Metadata = {
   title: CONFIG.APP_NAME,
   description: CONFIG.APP_DESCRIPTION,
