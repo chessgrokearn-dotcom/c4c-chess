@@ -1,6 +1,5 @@
 'use client'
 export const dynamic = 'force-dynamic'
-export const revalidate = false
 
 import { useState, useEffect, ChangeEvent } from 'react'
 import { useAccount, useConnect, useDisconnect, useConnectors, useBalance } from 'wagmi'
@@ -44,7 +43,6 @@ export default function Page() {
   const [newFriendAddr, setNewFriendAddr] = useState('')
   const [clock, setClock] = useState<any>(null)
   
-  // 🔹 Проверяем, что код выполняется только на клиенте
   useEffect(() => { setIsClient(true) }, [])
   
   const balanceResult = useBalance({ address, token: '0xaac20575371de01b4d10c4e7566d5453d72d56e7' as `0x${string}`, query: { enabled: !!address && chain?.id === 56 } })
@@ -72,7 +70,6 @@ export default function Page() {
   const reset = () => { setFen(new Chess().fen()); setSelected(null); setPossibleMoves([]); setOver(null); setCurrentGame(null); setMoveHistory([]); setClock(null) }
   const chess = new Chess(fen); const L = profile.lang || 'ru'; const tr = (key: string) => (UI_TRANSLATE as any)?.(L, key) || key
   
-  // 🔹 Показываем заглушку до загрузки на клиенте
   if (!isClient) return <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'var(--bg)',color:'var(--text)'}}>⏳ Загрузка...</div>
   
   if (!isConnected) return <div style={{minHeight:'100vh',background:'var(--bg)',color:'var(--text)',padding:20,display:'flex',flexDirection:'column',alignItems:'center',textAlign:'center'}}><h1 style={{fontSize:36,marginBottom:16}}>♟️{APP_NAME}</h1><button onClick={()=>setShowModal(true)} disabled={walletPending} style={{padding:'16px 48px',background:walletPending?'#6b7280':'var(--accent)',borderRadius:12,fontSize:18}}>{walletPending?'⏳...':'🔗 Войти'}</button>{showModal && <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',display:'flex',alignItems:'center',justifyContent:'center'}} onClick={()=>setShowModal(false)}><div style={{background:'var(--card)',padding:24,borderRadius:16,maxWidth:360,width:'100%'}} onClick={(e:any)=>e.stopPropagation()}><h3 style={{textAlign:'center',marginBottom:20}}>Выберите кошелёк</h3>{connectors.map((c:any)=><button key={c.id} onClick={()=>handleConnect(c)} disabled={walletPending} style={{width:'100%',padding:14,margin:'8px 0',background:'#3b82f6',color:'#fff',borderRadius:10}}>{c.name}</button>)}<button onClick={()=>setShowModal(false)} style={{width:'100%',padding:12,marginTop:16,background:'var(--border)',borderRadius:8}}>Закрыть</button></div></div>}</div>
