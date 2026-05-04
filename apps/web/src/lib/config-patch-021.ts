@@ -22,4 +22,3 @@ export function formatClock(seconds: number): string {
 }
 
 export const PATCH_021 = { initClock, tickClock, makeMove, formatClock };
-export type { GameClock };
