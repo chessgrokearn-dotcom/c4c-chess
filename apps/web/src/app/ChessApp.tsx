@@ -662,6 +662,35 @@ export default function ChessApp() {
           </div>
         )}
         
+        {/* Раздел YouTube */}
+        {tab === 'youtube' && (
+          <div style={{background:'var(--card)', padding:20, borderRadius:16}}>
+            <h3 style={{marginBottom:12}}>▶️ YouTube</h3>
+            <p style={{marginBottom:16, opacity:0.8}}>{YOUTUBE_SECTION_DESCRIPTION}</p>
+            <a href={YOUTUBE_URL} target="_blank" rel="noopener noreferrer">
+              <button style={{width:'100%', padding:'12px', background:'var(--accent)', color:'#000', borderRadius:8, border:'none', cursor:'pointer', fontSize:16}}>
+                {YOUTUBE_BUTTON_TEXT}
+              </button>
+            </a>
+          </div>
+        )}
+        
+        {/* Раздел социальных сетей */}
+        {tab === 'social' && (
+          <div style={{background:'var(--card)', padding:20, borderRadius:16}}>
+            <h3 style={{marginBottom:12}}>{SOCIAL_SECTION_TITLE}</h3>
+            <div style={{display:'flex', flexDirection:'column', gap:8}}>
+              {SOCIAL_LINKS.map((link) => (
+                <a key={link.name} href={link.url} target="_blank" rel="noopener noreferrer">
+                  <button style={{width:'100%', padding:'10px', background:'var(--bg)', color:'var(--text)', border:'1px solid var(--border)', borderRadius:8, cursor:'pointer', fontSize:14, display:'flex', alignItems:'center', gap:8}}>
+                    <span>{link.icon}</span> {link.name}
+                  </button>
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
+        
         {/* Шахматная доска (упрощённо) */}
         <div style={{marginTop:16, background:'var(--card)', padding:16, borderRadius:16}}>
           <div style={{textAlign:'center', padding:40, opacity:0.7}}>
