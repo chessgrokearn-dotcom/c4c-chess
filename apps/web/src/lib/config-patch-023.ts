@@ -90,8 +90,8 @@ export function useGameBalance(id: string | null) {
     query: { enabled: !!id } 
   });
   // 🔥 FIX: приводим data к unknown, затем к [bigint] для безопасной индексации
-  const result = data as unknown as [bigint] | undefined;
-  const balanceValue = result?.[0];
+  const dataAsArray = data as any;
+  const balanceValue = dataAsArray?.[0] as bigint | undefined;
   return { balance: fromWei(balanceValue), isLoading };
 }
 
@@ -148,5 +148,5 @@ export const PATCH_023 = {
   C4C_ABI, GAME_ABI, toWei, fromWei, validateStake, formatPrizePool,
   useApproveC4C, useCreateGame, useJoinGame, useClaimWinnings, useGameBalance, 
   publishGameToLobby, getLobbyGames, generateGameInvite,
-  initClock, tickClock, makeMove, formatClock, type GameClock
+  initClock, tickClock, makeMove, formatClock
 };
