@@ -1,4 +1,4 @@
-]633;E;echo "'use client'";7b4cea43-a490-4fa8-9377-7f5dc59530a3]633;C'use client'
+]633;E;printf "'use client'\\n";7b4cea43-a490-4fa8-9377-7f5dc59530a3]633;C'use client'
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 import { useAccount, useConnect, useDisconnect, useConnectors, useBalance } from 'wagmi'
