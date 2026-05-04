@@ -1,6 +1,7 @@
-]633;E;printf "'use client'\\n";7b4cea43-a490-4fa8-9377-7f5dc59530a3]633;C'use client'
+'use client'
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
+import { useState, useEffect, ChangeEvent } from 'react'
 import { useAccount, useConnect, useDisconnect, useConnectors, useBalance } from 'wagmi'
 import { Chess } from 'chess.js'
 import {
@@ -8,6 +9,11 @@ import {
   formatTime, formatC4C, getBotMove, saveProfileToStorage, loadProfileFromStorage,
   resetConnectionStates, getFriends, addFriend, processPayout,
   FIXED_CSS, injectGlobalStyles,
+  validateStake, formatPrizePool, formatClock,
+  useApproveC4C, useCreateTokenGame, useJoinTokenGame, useClaimWinnings, useGameBalance,
+  publishGameToLobby, getLobbyGames, generateGameInvite, sendInviteToChat, canJoinGame,
+  initClock, tickClock, makeMove
+} from '@/lib/config'
   validateStake, formatPrizePool, formatClockExtended,
   useApproveC4C, useCreateTokenGame, useJoinTokenGame, useClaimWinnings, useGameBalance,
   publishGameToLobby, getLobbyGames, generateGameInvite, sendInviteToChat, canJoinGame,
