@@ -1,35 +1,14 @@
 import { CONFIG_BASE } from './config-base';
-// 🔹 Оставляем ТОЛЬКО рабочие патчи (остальные закомментированы до лучших времён)
-// import { PATCH_001 } from './config-patch-001'; 
-// import { PATCH_002 } from './config-patch-002';
-// import { PATCH_003 } from './config-patch-003';
-// import { PATCH_004 } from './config-patch-004';
-// import { PATCH_005 } from './config-patch-005';
-// import { PATCH_006 } from './config-patch-006';
-// import { PATCH_007 } from './config-patch-007';
-// import { PATCH_008 } from './config-patch-008';
-// import { PATCH_009 } from './config-patch-009';
-// import { PATCH_010 } from './config-patch-010';
-// import { PATCH_011 } from './config-patch-011';
-// import { PATCH_014 } from './config-patch-014';
-// import { PATCH_015 } from './config-patch-015';
-// import { PATCH_016 } from './config-patch-016';
-// import { PATCH_017 } from './config-patch-017';
-// import { PATCH_018 } from './config-patch-018'; // <-- Здесь была ошибка
-// import { PATCH_019 } from './config-patch-019';
-// import { PATCH_020 } from './config-patch-020';
-// import { PATCH_021 } from './config-patch-021';
-// import { PATCH_022 } from './config-patch-022';
-import { PATCH_023 } from './config-patch-023'; // 🔥 Единственный активный патч с логикой
+// 🔹 АКТИВНЫЕ ПАТЧИ (только рабочие)
+import { PATCH_023 } from './config-patch-023';
 
-// 🔹 КОНСТРУКТОР: Собираем только рабочее
+// 🔹 КОНСТРУКТОР: Только то, что нужно
 export const CONFIG = {
   ...CONFIG_BASE,
-  // ...PATCH_001, ...PATCH_002, ... (закомментировано)
-  ...PATCH_023 // 🔥 Активная логика
+  ...PATCH_023
 };
 
-// 🔹 ЯВНЫЕ ЭКСПОРТЫ (всё берём из PATCH_023 или CONFIG_BASE)
+// 🔹 ЯВНЫЕ ЭКСПОРТЫ (всё из PATCH_023)
 export const APP_NAME = CONFIG.APP_NAME;
 export const C4C_TOKEN_ADDRESS = CONFIG.C4C_ADDR;
 export const GAME_CONTRACT_ADDRESS = CONFIG.GAME_ADDR;
@@ -60,7 +39,7 @@ export const UI_LANGS = CONFIG.UI_LANGS;
 export const UI_BOARDS = CONFIG.UI_BOARDS;
 export const UI_TRANSLATE = CONFIG.UI_TRANSLATE;
 
-// 🔹 КОНТРАКТЫ / ХУКИ (из PATCH_023)
+// 🔹 КОНТРАКТЫ / ХУКИ
 export const C4C_ABI = CONFIG.C4C_ABI;
 export const GAME_ABI = CONFIG.GAME_ABI;
 export const toContractUnits = CONFIG.toWei;
