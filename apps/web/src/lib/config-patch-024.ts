@@ -1,5 +1,11 @@
 // config-patch-024.ts - Расширение создания игры с балансом и лобби
 import { useState, useEffect } from 'react';
+import { PATCH_003 } from './config-patch-003';
+import { PATCH_005 } from './config-patch-005';
+import { PATCH_010 } from './config-patch-010';
+import { PATCH_011 } from './config-patch-011';
+import { PATCH_014 } from './config-patch-014';
+import { PATCH_023 } from './config-patch-023';
 
 // 🔹 Новые константы для баланса игры
 export const GAME_BALANCE_WINDOW_TITLE = 'Баланс игры';
@@ -136,8 +142,18 @@ export function formatClockExtended(seconds: number): string {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
+export function processTimeWin(winner: 'white' | 'black', gameId: string) {
+  console.log(`Победа по времени: ${winner} в игре ${gameId}`);
+}
+
 // 🔹 Экспорт патча
 export const PATCH_024 = {
+  ...PATCH_003,
+  ...PATCH_005,
+  ...PATCH_010,
+  ...PATCH_011,
+  ...PATCH_014,
+  ...PATCH_023,
   GAME_BALANCE_WINDOW_TITLE,
   GAME_BALANCE_JOIN_BUTTON,
   GAME_BALANCE_CREATE_BUTTON,

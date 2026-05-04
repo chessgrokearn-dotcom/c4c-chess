@@ -35,7 +35,7 @@ export function validateStake(s: number): boolean {
 
 // 🔹 wagmi v2 Hooks (исправлено:  => data)
 export function useApproveC4C() {
-  const { writeContract,  txHash, isPending, isSuccess } = useWriteContract();
+  const { writeContract, data: txHash, isPending, isSuccess } = useWriteContract();
   const { isLoading: isConfirming } = useWaitForTransactionReceipt({ hash: txHash as `0x${string}` });
   const approve = (stake: number) => writeContract({ 
     address: C4C_ADDR, abi: C4C_ABI, functionName: 'approve', 
@@ -45,7 +45,7 @@ export function useApproveC4C() {
 }
 
 export function useCreateGame() {
-  const { writeContract,  txHash, isPending, isSuccess } = useWriteContract();
+  const { writeContract, data: txHash, isPending, isSuccess } = useWriteContract();
   const { isLoading: isConfirming } = useWaitForTransactionReceipt({ hash: txHash as `0x${string}` });
   const create = (time: number, stake: number) => writeContract({ 
     address: GAME_ADDR, abi: GAME_ABI, functionName: 'createGame', 
@@ -55,7 +55,7 @@ export function useCreateGame() {
 }
 
 export function useJoinGame() {
-  const { writeContract,  txHash, isPending, isSuccess } = useWriteContract();
+  const { writeContract, data: txHash, isPending, isSuccess } = useWriteContract();
   const { isLoading: isConfirming } = useWaitForTransactionReceipt({ hash: txHash as `0x${string}` });
   const join = (id: string) => {
     const numericId = BigInt(id.replace('g_','').split('_')[0]);
@@ -68,7 +68,7 @@ export function useJoinGame() {
 }
 
 export function useClaimWinnings() {
-  const { writeContract,  txHash, isPending, isSuccess } = useWriteContract();
+  const { writeContract, data: txHash, isPending, isSuccess } = useWriteContract();
   const { isLoading: isConfirming } = useWaitForTransactionReceipt({ hash: txHash as `0x${string}` });
   const claim = (id: string) => {
     const numericId = BigInt(id.replace('g_','').split('_')[0]);

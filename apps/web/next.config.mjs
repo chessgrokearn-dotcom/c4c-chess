@@ -8,8 +8,12 @@ const nextConfig = {
     config.resolve.fallback = {
       ...config.resolve.fallback,
       fs: false, net: false, tls: false, crypto: false,
+    };
+    config.resolve.alias = {
+      ...config.resolve.alias,
       '@react-native-async-storage/async-storage': false,
-      'pino-pretty': false, 'react-native': false,
+      'pino-pretty': false,
+      'react-native': false,
     };
     config.ignoreWarnings = [
       { module: /@metamask\/sdk/ },
