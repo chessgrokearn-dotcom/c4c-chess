@@ -93,8 +93,15 @@ export const checkTimeWin = CONFIG.checkTimeWin;
 export const formatClockExtended = CONFIG.formatClockExtended;
 export const processTimeWin = CONFIG.processTimeWin;
 
-// 🔹 ЭКСПОРТ ТИПОВ (без конфликтов)
-export type { GameNotification } from './config-patch-026';
+// 🔹 ИЗ ПАТЧА 026 (значения)
+export const createNotification = CONFIG.createNotification;
+export const getNotifications = CONFIG.getNotifications;
+export const markNotificationRead = CONFIG.markNotificationRead;
+export const playStartSound = CONFIG.playStartSound;
+export const showVisualAlert = CONFIG.showVisualAlert;
+export const checkAndStartGame = CONFIG.checkAndStartGame;
+export const updatePlayerPresence = CONFIG.updatePlayerPresence;
+export const areBothPlayersOnline = CONFIG.areBothPlayersOnline;
 
-// 🔹 ЭКСПОРТ ТИПОВ (без конфликтов)
+// 🔹 Типы (один раз)
 export type { GameNotification } from './config-patch-026';
