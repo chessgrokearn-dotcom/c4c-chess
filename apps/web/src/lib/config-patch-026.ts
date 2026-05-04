@@ -33,11 +33,12 @@ export const UI_TRANSLATE = {
 
 // 🔹 СЕКЦИИ И СОЦСЕТИ
 export const SECTIONS = ['profile', 'lobby', 'friends', 'board', 'notifications'] as const;
-export const YOUTUBE_URL = 'https://www.youtube.com/@c4c-chess';
+export const YOUTUBE_URL = 'https://www.youtube.com/@C4CChess';
 export const YOUTUBE_BUTTON_TEXT = '📺 Смотреть видео';
 export const C4C_EXCHANGE_URL = 'https://www.pink.meme/token/bsc/0xaac20575371de01b4d10c4e7566d5453d72d56e7';
 export const SOCIAL_SECTION_TITLE = '🌐 Социальные сети';
 export const SOCIAL_LINKS = [
+  { name: 'X', url: 'https://x.com/chessC4C', icon: '❌' },
   { name: 'Twitter', url: 'https://twitter.com/c4c_chess', icon: '🐦' },
   { name: 'Discord', url: 'https://discord.gg/c4c-chess', icon: '💬' },
   { name: 'Telegram', url: 'https://t.me/c4c_chess', icon: '📱' }
@@ -74,10 +75,11 @@ export function injectGlobalStyles(css: string) {
 
 export function areBothPlayersOnline(player1: string, player2: string): boolean {
   if (typeof window === 'undefined') return false;
-  const presence = JSON.parse(localStorage.getItem('c4c-presence') || '{}');
+  const presence = JSON.parse(localStorage.getItem('c4c_presence') || '{}');
   const now = Date.now();
-  const p1 = presence[player1]; const p2 = presence[player2];
-  return p1?.isOnline && p2?.isOnline && (now - p1.lastSeen) < 10000 && (now - p2.lastSeen) < 10000;
+  const p1 = presence[player1.toLowerCase()];
+  const p2 = presence[player2.toLowerCase()];
+  return typeof p1 === 'number' && typeof p2 === 'number' && (now - p1) < 10000 && (now - p2) < 10000;
 }
 
 // 🔹 ДРУЗЬЯ И ВЫПЛАТЫ
@@ -100,6 +102,37 @@ export function processPayout(winner: string, amount: number) {
 
 export function getLobbyGames() {
   return typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('c4c_lobby') || '[]') : [];
+}
+
+export function publishGameToLobby(game: any): void {
+  if (typeof window === 'undefined') return;
+  const list = JSON.parse(localStorage.getItem('c4c_lobby') || '[]');
+  const index = list.findIndex((item:any) => item.id === game.id);
+  if (index >= 0) {
+    list[index] = game;
+  } else {
+    list.push(game);
+  }
+  localStorage.setItem('c4c_lobby', JSON.stringify(list));
+}
+
+export function generateGameInvite(gameId: string, creatorName: string, stake: number, time: number) {
+  const base = typeof window !== 'undefined' ? window.location.origin : '';
+  const t = time >= 3600 ? `${time/3600}ч` : `${time/60}м`;
+  return {
+    link: `${base}/?join=${gameId}`,
+    text: `♟️ ${creatorName} приглашает в игру на ${stake.toLocaleString()} C4C!\n⏱️ Время: ${t}\n🔗 ${base}/?join=${gameId}`
+  };
+}
+
+export function sendInviteToChat(friendAddress: string, invite: { text: string, link: string }) {
+  const invites = JSON.parse(localStorage.getItem('c4c_invites') || '[]');
+  invites.push({ to: friendAddress, ...invite, createdAt: Date.now() });
+  localStorage.setItem('c4c_invites', JSON.stringify(invites));
+}
+
+export function canJoinGame(game: any, address: string): boolean {
+  return game && game.status === 'waiting' && game.creator !== address && (!game.players || game.players.length < 2);
 }
 
 // 🔹 КОНСТАНТЫ КОНТРАКТОВ
@@ -649,45 +682,41 @@ export function useJoinTokenGame() {
 // 🔹 ИНТЕРФЕЙС И ФУНКЦИИ ОПОВЕЩЕНИЙ
 export interface GameNotification {
   id: string;
-  type: 'game_start' | 'invite' | 'timeout_win' | 'claim_ready';
+  type: 'game_created' | 'game_joined' | 'game_started' | 'invite' | 'timeout_win' | 'claim_ready';
   title: string;
   message: string;
   gameId?: string;
   opponentName?: string;
   myColor?: 'w' | 'b';
   timestamp: number;
+  createdAt?: number;
   read: boolean;
 }
 
-export function createNotification(
-  type: GameNotification['type'],
-  title: string,
-  message: string,
-  gameId?: string,
-  opponentName?: string,
-  myColor?: 'w' | 'b'
-): string {
-  const id = `notif_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  const notification: GameNotification = {
+export function createNotification(notification: Partial<GameNotification> & { title: string; message: string; type: GameNotification['type'] }): string {
+  const id = notification.id || `notif_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  const now = Date.now();
+  const saved: GameNotification = {
     id,
-    type,
-    title,
-    message,
-    gameId,
-    opponentName,
-    myColor,
-    timestamp: Date.now(),
-    read: false
+    type: notification.type,
+    title: notification.title,
+    message: notification.message,
+    gameId: notification.gameId,
+    opponentName: notification.opponentName,
+    myColor: notification.myColor,
+    timestamp: notification.timestamp || now,
+    createdAt: notification.createdAt || now,
+    read: notification.read ?? false
   };
 
   const existing = JSON.parse(localStorage.getItem('c4c_notifications') || '[]') as GameNotification[];
-  existing.unshift(notification);
+  existing.unshift(saved);
   localStorage.setItem('c4c_notifications', JSON.stringify(existing.slice(0, 50))); // Макс 50
 
   return id;
 }
 
-export function getNotifications(filter: 'all' | 'unread'): GameNotification[] {
+export function getNotifications(filter: 'all' | 'unread' = 'all'): GameNotification[] {
   const notifications = JSON.parse(localStorage.getItem('c4c_notifications') || '[]') as GameNotification[];
   return filter === 'unread' ? notifications.filter(n => !n.read) : notifications;
 }
@@ -734,10 +763,22 @@ export function showVisualAlert(gameId: string, myColor: 'w' | 'b', opponentName
 
 // 🔹 ПРОВЕРКА И СТАРТ ИГРЫ
 export async function checkAndStartGame(gameId: string): Promise<boolean> {
-  // Логика проверки и старта игры
-  // Здесь должна быть интеграция с контрактом и состоянием игры
-  console.log(`Checking game start for ${gameId}`);
-  return true; // Заглушка
+  if (typeof window === 'undefined') return false;
+  const lobby = JSON.parse(localStorage.getItem('c4c_lobby') || '[]');
+  const game = lobby.find((item:any) => item.id === gameId);
+  if (!game || game.status !== 'starting') return false;
+
+  const now = Date.now();
+  const startAt = game.startAt || 0;
+  const bothOnline = game.players?.length === 2 && areBothPlayersOnline(game.players[0], game.players[1]);
+
+  if (!bothOnline || now < startAt) {
+    return false;
+  }
+
+  const updatedGames = lobby.map((item:any) => item.id === gameId ? { ...item, status: 'active', startedAt: now } : item);
+  localStorage.setItem('c4c_lobby', JSON.stringify(updatedGames));
+  return true;
 }
 
 // 🔹 HEARTBEAT И ОНЛАЙН-ПРОВЕРКА

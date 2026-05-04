@@ -8,6 +8,7 @@ import {
   formatTime, formatC4C, getBotMove, saveProfileToStorage, loadProfileFromStorage,
   resetConnectionStates, getFriends, addFriend, processPayout,
   FIXED_CSS, injectGlobalStyles, validateStake, formatPrizePool, formatClock,
+  useApproveC4C, useCreateTokenGame, useJoinTokenGame,
   publishGameToLobby, getLobbyGames, generateGameInvite, sendInviteToChat, canJoinGame,
   initClock, tickClock, makeMove,
   SECTIONS, YOUTUBE_URL, YOUTUBE_BUTTON_TEXT, C4C_EXCHANGE_URL, SOCIAL_SECTION_TITLE, SOCIAL_LINKS, YOUTUBE_SECTION_DESCRIPTION,
@@ -55,6 +56,12 @@ export default function ChessApp() {
   const [friends, setFriends] = useState<any[]>([])
   const [newFriendAddr, setNewFriendAddr] = useState('')
   const [clock, setClock] = useState<any>(null)
+  const [notifications, setNotifications] = useState<GameNotification[]>([])
+  const [notificationFilter, setNotificationFilter] = useState<'all' | 'unread'>('all')
+
+  const { approve, isPending: isApproving } = useApproveC4C()
+  const { create: createTokenGame, isPending: isCreating } = useCreateTokenGame()
+  const { join: joinTokenGame, isPending: isJoining } = useJoinTokenGame()
   
   // 🔹 Эффекты
   useEffect(() => { if (FIXED_CSS) injectGlobalStyles(FIXED_CSS) }, [])
@@ -64,7 +71,11 @@ export default function ChessApp() {
     else if (address) setProfile((p:any) => ({ ...p, id: address, name: p.name || `Player_${address?.slice(2,8)}` }))
     setGames(getLobbyGames())
     setFriends(getFriends())
+    setNotifications(getNotifications(notificationFilter))
   }, [address])
+  useEffect(() => { 
+    setNotifications(getNotifications(notificationFilter))
+  }, [notificationFilter])
   useEffect(() => { 
     if (profile.theme) { 
       const th = (UI_THEMES as any)[profile.theme]
@@ -81,6 +92,77 @@ export default function ChessApp() {
     const timer = setInterval(() => setClock((prev: any) => prev ? tickClock(prev) : prev), 1000)
     return () => clearInterval(timer)
   }, [clock?.active, clock?.finished])
+  
+  // 🔹 Heartbeat система — обновляем онлайн-статус каждые 5 сек
+  useEffect(() => {
+    if (!address || !isConnected) return
+    
+    const heartbeat = setInterval(() => {
+      updatePlayerPresence(address)
+    }, 5000)
+    
+    // Первоначальное обновление
+    updatePlayerPresence(address)
+    
+    return () => clearInterval(heartbeat)
+  }, [address, isConnected])
+  
+  // 🔹 Проверка старта игр каждые 30 сек
+  useEffect(() => {
+    if (!address || !isConnected) return
+    
+    const checkGames = setInterval(() => {
+      games.forEach(async (game) => {
+        if (game.players?.length === 2 && game.status === 'starting') {
+          const canStart = await checkAndStartGame(game.id)
+          if (canStart) {
+            // Определяем цвета
+            const presence = JSON.parse(localStorage.getItem('c4c_presence') || '{}')
+            const now = Date.now()
+            const p1 = presence[game.players[0]] || 0
+            const p2 = presence[game.players[1]] || 0
+            
+            let myColor: 'w' | 'b' = 'w'
+            if (Math.abs(p1 - p2) < 2000) {
+              // Оба онлайн одновременно — случайный выбор
+              myColor = Math.random() < 0.5 ? 'w' : 'b'
+            } else {
+              // Первый онлайн получает белые
+              myColor = (p1 < p2) ? 'w' : 'b'
+            }
+            
+            // Создаём уведомление о старте
+            createNotification({
+              id: `start_${game.id}`,
+              type: 'game_started',
+              title: '🎮 Игра началась!',
+              message: `Вы играете ${myColor === 'w' ? '⚪ Белыми' : '⚫ Чёрными'} против ${game.players.find((p: string) => p !== address)?.slice(0,6)}...`,
+              gameId: game.id,
+              read: false,
+              createdAt: Date.now()
+            })
+            
+            // Воспроизводим звук
+            playStartSound()
+            
+            // Показываем визуальное оповещение
+            showVisualAlert(game.id, myColor, game.players.find((p: string) => p !== address)?.slice(0,6) + '...')
+            
+            // Обновляем статус игры
+            setGames(prev => prev.map(g => 
+              g.id === game.id ? {...g, status: 'active', myColor} : g
+            ))
+            
+            // Переходим к доске
+            setCurrentGame({...game, status: 'active', myColor})
+            setTab('board')
+          }
+        }
+      })
+    }, 30000)
+    
+    return () => clearInterval(checkGames)
+  }, [address, isConnected, games])
   
   // 🔹 Функции профиля
   const handleImageUpload = (e: ChangeEvent<HTMLInputElement>) => { 
@@ -199,7 +281,7 @@ export default function ChessApp() {
         
         {/* Навигация */}
         <div style={{display:'flex', gap:8, marginBottom:16, flexWrap:'wrap'}}>
-          {['profile','create','lobby','friends','youtube','social'].map((t:any) => (
+          {['profile','create','lobby','notifications','friends','youtube','social'].map((t:any) => (
             <button 
               key={t} 
               onClick={() => setTab(t)} 
@@ -218,6 +300,7 @@ export default function ChessApp() {
               {t==='profile' ? '👤 Профиль' : 
                t==='create' ? '🎮 Создать' : 
                t==='lobby' ? '🎲 Лобби' : 
+               t==='notifications' ? '🔔 Оповещ.' : 
                t==='friends' ? '👥 Друзья' : 
                t==='youtube' ? '▶️ YouTube' : '🌐 Соцсети'}
             </button>
@@ -299,17 +382,117 @@ export default function ChessApp() {
           </div>
         )}
         
-        {/* Остальные вкладки (упрощённо) */}
+        {/* Раздел создания игры */}
         {tab === 'create' && (
           <div style={{background:'var(--card)', padding:20, borderRadius:16}}>
-            <h3 style={{marginBottom:12}}>🎮 Создать новую игру</h3>
-            <p style={{opacity:0.7, marginBottom:16}}>Настройте параметры и внесите ставку в C4C</p>
-            {/* Форма аналогична профилю */}
+            <h3 style={{marginBottom:12}}>🎯 Создать игру на токены C4C</h3>
+            <p style={{opacity:0.7, marginBottom:16}}>
+              Выберите время и ставку, внесите токены в баланс игры. Игра опубликуется в лобби и начнётся через 15 минут после присоединения второго игрока.
+            </p>
+            
+            {/* Выбор времени */}
+            <div style={{marginBottom:16}}>
+              <label style={{display:'block', marginBottom:8, fontWeight:600}}>⏱️ Время на игру:</label>
+              <select 
+                value={timeCtrl} 
+                onChange={(e:any) => setTimeCtrl(Number(e.target.value))}
+                style={{width:'100%', padding:10, borderRadius:8, background:'var(--bg)', color:'var(--text)', border:'1px solid var(--border)'}}
+              >
+                {TIME_OPTIONS.map((opt:any) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </div>
+            
+            {/* Выбор ставки */}
+            <div style={{marginBottom:16}}>
+              <label style={{display:'block', marginBottom:8, fontWeight:600}}>💰 Ставка (C4C):</label>
+              <select 
+                value={stake} 
+                onChange={(e:any) => setStake(Number(e.target.value))}
+                style={{width:'100%', padding:10, borderRadius:8, background:'var(--bg)', color:'var(--text)', border:'1px solid var(--border)'}}
+              >
+                {STAKE_OPTIONS.map((opt:any) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+              <p style={{fontSize:12, opacity:0.6, marginTop:4}}>
+                🏆 Призовой фонд: {formatPrizePool(stake)} | 💰 Ваш баланс: {balance ? formatC4C(balance.value) : 'Загрузка...'}
+              </p>
+            </div>
+            
+            {/* Кнопка создания */}
             <button 
-              style={{width:'100%', padding:12, background:'var(--success)', color:'#fff', borderRadius:8, fontWeight:600, border:'none', cursor:'pointer'}}
+              onClick={async () => {
+                if (!address) return alert('Подключите кошелёк!')
+                if (!validateStake(stake)) return alert('Неверная ставка!')
+                
+                if (!confirm(`🎮 Создать игру на токены?\n💰 Ставка: ${formatC4C(stake)} C4C\n🏆 Фонд: ${formatPrizePool(stake)}\n⚠️ Токены спишутся с вашего кошелька в баланс игры.`)) return;
+                
+                try {
+                  const gameId = `game_${Date.now()}_${Math.random().toString(36).slice(2,9)}`;
+                  const invite = generateGameInvite(gameId, `Игра ${gameId.slice(-8)}`, stake, timeCtrl);
+                  const gameData = {
+                    id: gameId,
+                    creator: address,
+                    stake,
+                    timeCtrl,
+                    status: 'waiting',
+                    balance: stake,
+                    createdAt: Date.now(),
+                    players: [address],
+                    startAt: 0
+                  };
+
+                  publishGameToLobby(gameData);
+                  setGames(prev => [...prev, gameData]);
+                  setNotifications(getNotifications(notificationFilter));
+
+                  createNotification({
+                    type: 'game_created',
+                    title: '🎮 Игра создана!',
+                    message: `Ожидаем второго игрока. Ссылка: ${invite.link}`,
+                    gameId,
+                    read: false,
+                    createdAt: Date.now()
+                  });
+                  setNotifications(getNotifications(notificationFilter));
+
+                  if (!isApproving) {
+                    await approve(stake);
+                  }
+                  if (!isCreating) {
+                    await createTokenGame(timeCtrl, stake);
+                  }
+
+                  alert('✅ Игра создана! Игра опубликована в лобби.');
+                  setTab('lobby');
+                  
+                } catch (error) {
+                  console.error('Ошибка создания игры:', error);
+                  alert('❌ Ошибка создания игры');
+                }
+              }}
+              disabled={!balance || balance.value < BigInt(stake) || isApproving || isCreating}
+              style={{
+                width:'100%', 
+                padding:14, 
+                background: (!balance || balance.value < BigInt(stake) || isApproving || isCreating) ? '#6b7280' : 'var(--success)', 
+                color:'#fff', 
+                borderRadius:8, 
+                fontWeight:600, 
+                border:'none', 
+                cursor: (!balance || balance.value < BigInt(stake) || isApproving || isCreating) ? 'not-allowed' : 'pointer',
+                marginBottom: 12
+              }}
             >
-              🎮 Создать игру
+              🎮 Создать игру на токены
             </button>
+            
+            {/* Ссылка на покупку токенов */}
+            <p style={{textAlign:'center', fontSize:12, opacity:0.6}}>
+              Недостаточно C4C? <a href={C4C_BUY_URL} target="_blank" style={{color:'var(--accent)'}}>Купить токены</a>
+            </p>
           </div>
         )}
         
@@ -320,9 +503,159 @@ export default function ChessApp() {
               <p style={{opacity:0.7}}>Нет активных игр</p>
             ) : (
               games.map((g:any) => (
-                <div key={g.id} style={{padding:12, background:'var(--bg)', borderRadius:8, marginBottom:8}}>
-                  <p style={{fontWeight:600}}>🎮 {g.id.slice(0,12)}...</p>
-                  <p style={{fontSize:12, opacity:0.6}}>💰 {g.balance?.toLocaleString() || '0'} C4C | ⏱️ {g.timeCtrl/60}м</p>
+                <div key={g.id} style={{padding:12, background:'var(--bg)', borderRadius:8, marginBottom:8, border: g.creator === address ? '2px solid var(--accent)' : '1px solid var(--border)'}}>
+                  <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                    <div>
+                      <p style={{fontWeight:600}}>🎮 {g.id.slice(0,12)}...</p>
+                      <p style={{fontSize:12, opacity:0.6}}>
+                        💰 Баланс: {g.balance?.toLocaleString() || '0'} C4C | 🏆 Фонд: {formatPrizePool(g.stake || 0)} | ⏱️ {formatTime(g.timeCtrl)}
+                      </p>
+                      <p style={{fontSize:11, opacity:0.5}}>
+                        👤 {g.creator === address ? 'Вы создали' : `Создатель: ${g.creator?.slice(0,6)}...${g.creator?.slice(-4)}`}
+                      </p>
+                    </div>
+                    <div style={{display:'flex', flexDirection:'column', gap:4}}>
+                      {g.creator !== address && (
+                        <button 
+                          onClick={() => {
+                            const invite = generateGameInvite(g.id, `Игра ${g.id.slice(-8)}`, g.stake, g.timeCtrl);
+                            navigator.clipboard.writeText(invite.link);
+                            alert('📋 Ссылка скопирована!');
+                          }}
+                          style={{padding:'4px 8px', background:'#3b82f6', color:'#fff', borderRadius:6, border:'none', cursor:'pointer', fontSize:11}}
+                        >
+                          📩
+                        </button>
+                      )}
+                      <button 
+                        onClick={async () => {
+                          if (g.creator === address) return alert('Это ваша игра!');
+                          
+                          if (!confirm(`▶️ Присоединиться к игре?\n💰 Ставка: ${formatC4C(g.stake)} C4C\n🏆 Фонд: ${formatPrizePool(g.stake)}`)) return;
+                          
+                          try {
+                            const updatedGame = {
+                              ...g,
+                              players: [...(g.players || []), address],
+                              status: 'starting',
+                              startAt: Date.now() + 15 * 60 * 1000
+                            };
+
+                            publishGameToLobby(updatedGame);
+                            setGames(prev => prev.map(game => game.id === g.id ? updatedGame : game));
+                            setNotifications(getNotifications(notificationFilter));
+
+                            createNotification({
+                              type: 'game_joined',
+                              title: '🎮 Игрок присоединился!',
+                              message: `Игра стартует через 15 минут. Соперник: ${g.creator?.slice(0,6)}...`,
+                              gameId: g.id,
+                              read: false,
+                              createdAt: Date.now()
+                            });
+                            setNotifications(getNotifications(notificationFilter));
+
+                            if (!isApproving) {
+                              await approve(g.stake);
+                            }
+                            if (!isJoining) {
+                              await joinTokenGame(g.id);
+                            }
+
+                            alert('✅ Вы присоединились! Игра будет запущена через 15 минут.');
+                          } catch (error) {
+                            console.error('Ошибка присоединения:', error);
+                            alert('❌ Ошибка присоединения к игре');
+                          }
+                        }}
+                        style={{padding:'6px 12px', background:'var(--success)', color:'#fff', borderRadius:6, border:'none', cursor:'pointer', fontSize:12}}
+                      >
+                        ▶️ Играть
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+        
+        {/* Раздел оповещений */}
+        {tab === 'notifications' && (
+          <div style={{background:'var(--card)', padding:20, borderRadius:16}}>
+            <h3 style={{marginBottom:12}}>🔔 Оповещения</h3>
+            
+            {/* Фильтры */}
+            <div style={{display:'flex', gap:8, marginBottom:16}}>
+              <button 
+                onClick={() => setNotificationFilter('all')}
+                style={{
+                  padding:'8px 16px', 
+                  background: notificationFilter === 'all' ? 'var(--accent)' : 'var(--bg)', 
+                  color: notificationFilter === 'all' ? '#fff' : 'var(--text)', 
+                  borderRadius:8, 
+                  border:'none', 
+                  cursor:'pointer'
+                }}
+              >
+                Все
+              </button>
+              <button 
+                onClick={() => setNotificationFilter('unread')}
+                style={{
+                  padding:'8px 16px', 
+                  background: notificationFilter === 'unread' ? 'var(--accent)' : 'var(--bg)', 
+                  color: notificationFilter === 'unread' ? '#fff' : 'var(--text)', 
+                  borderRadius:8, 
+                  border:'none', 
+                  cursor:'pointer'
+                }}
+              >
+                Непрочитанные
+              </button>
+            </div>
+            
+            {/* Список оповещений */}
+            {notifications.length === 0 ? (
+              <p style={{opacity:0.7}}>Нет оповещений</p>
+            ) : (
+              notifications.map((n: GameNotification) => (
+                <div 
+                  key={n.id}
+                  onClick={() => {
+                    markNotificationRead(n.id);
+                    setNotifications(getNotifications(notificationFilter));
+                    if (n.gameId) {
+                      setCurrentGame(games.find(g => g.id === n.gameId));
+                      setTab('board');
+                    }
+                  }}
+                  style={{
+                    padding:12, 
+                    background:'var(--bg)', 
+                    borderRadius:8, 
+                    marginBottom:8, 
+                    border: n.read ? '1px solid var(--border)' : '2px solid var(--success)',
+                    cursor:'pointer',
+                    position:'relative'
+                  }}
+                >
+                  {!n.read && (
+                    <div style={{
+                      position:'absolute', 
+                      top:8, 
+                      right:8, 
+                      width:8, 
+                      height:8, 
+                      background:'var(--success)', 
+                      borderRadius:'50%'
+                    }}></div>
+                  )}
+                  <p style={{fontWeight: n.read ? 400 : 600, marginBottom:4}}>{n.title}</p>
+                  <p style={{fontSize:12, opacity:0.7, marginBottom:4}}>{n.message}</p>
+                  <p style={{fontSize:10, opacity:0.5}}>
+                    {new Date(n.createdAt || n.timestamp).toLocaleString('ru-RU')}
+                  </p>
                 </div>
               ))
             )}

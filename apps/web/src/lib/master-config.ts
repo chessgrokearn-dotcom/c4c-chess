@@ -68,6 +68,11 @@ export const checkAndStartGame = CONFIG.checkAndStartGame;
 export const updatePlayerPresence = CONFIG.updatePlayerPresence;
 export const areBothPlayersOnline = CONFIG.areBothPlayersOnline;
 
+// 🔹 ХУКИ WAGMI (КОНТРАКТЫ)
+export const useApproveC4C = CONFIG.useApproveC4C;
+export const useCreateTokenGame = CONFIG.useCreateTokenGame;
+export const useJoinTokenGame = CONFIG.useJoinTokenGame;
+
 // 🔹 ТИПЫ
 export type { GameNotification } from './config-patch-026';
 
@@ -81,5 +86,3 @@ export const GAME_BALANCE_WINDOW_TITLE = CONFIG.GAME_BALANCE_WINDOW_TITLE;
 export const GAME_BALANCE_JOIN_BUTTON = CONFIG.GAME_BALANCE_JOIN_BUTTON;
 export const GAME_BALANCE_CREATE_BUTTON = CONFIG.GAME_BALANCE_CREATE_BUTTON;
 export const GAME_BALANCE_INVITE_BUTTON = CONFIG.GAME_BALANCE_INVITE_BUTTON;
-export const TIME_OPTIONS = CONFIG.TIME_CONTROLS || CONFIG.TIME_OPTIONS;
-export const STAKE_OPTIONS = CONFIG.STAKE_LEVELS || CONFIG.STAKE_OPTIONS;
