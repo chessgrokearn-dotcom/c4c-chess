@@ -3,7 +3,8 @@ const nextConfig = {
   reactStrictMode: true,
   eslint: { ignoreDuringBuilds: true },
   typescript: { ignoreBuildErrors: false },
-  webpack: (config) => {
+  webpack: (config, { isServer }) => {
+    // 🔹 Игнорируем опциональные зависимости для React Native / pino
     config.resolve.fallback = {
       ...config.resolve.fallback,
       '@react-native-async-storage/async-storage': false,
@@ -11,6 +12,15 @@ const nextConfig = {
       fs: false, net: false, tls: false, crypto: false,
       stream: false, http: false, https: false, zlib: false,
     };
+    
+    // 🔹 Фикс для wagmi/viem: отключаем проблемные алиасы при сборке
+    if (!isServer) {
+      config.externals = [
+        ...(config.externals || []),
+        { 'perf_hooks': 'commonjs perf_hooks' }
+      ];
+    }
+    
     return config;
   },
 };
