@@ -136,8 +136,24 @@ export function formatClockExtended(seconds: number): string {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
-// 🔹 Обработка выигрыша по времени
-export function processTimeWin(winner: 'white' | 'black', gameId: string) {
-  // Логика claim winnings
-  console.log(`Победа по времени: ${winner} в игре ${gameId}`);
-}
+// 🔹 Экспорт патча
+export const PATCH_024 = {
+  GAME_BALANCE_WINDOW_TITLE,
+  GAME_BALANCE_JOIN_BUTTON,
+  GAME_BALANCE_CREATE_BUTTON,
+  GAME_BALANCE_INVITE_BUTTON,
+  createGameWithStake,
+  joinGameWithStake,
+  useGameBalanceManager,
+  publishGameToLobbyExtended,
+  getLobbyGamesExtended,
+  generateGameInviteExtended,
+  sendInviteToChatExtended,
+  canJoinGameExtended,
+  initClockExtended,
+  tickClockExtended,
+  makeMoveExtended,
+  checkTimeWin,
+  formatClockExtended,
+  processTimeWin
+};
