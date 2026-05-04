@@ -792,4 +792,4 @@ export const PATCH_026 = {
   getFriends,
   addFriend,
   processPayout,
-  getLobbyGames
+  getLobbyGames};
