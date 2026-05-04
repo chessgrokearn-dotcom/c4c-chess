@@ -23,18 +23,19 @@ export const GAME_ABI = [
   'function getBalance(uint256 id) external view returns (uint256)'
 ] as const;
 
-// 🔹 Утилиты (безопасные типы)
+// 🔹 Утилиты (🔥 ИСПРАВЛЕНО: fromWei принимает number | bigint)
 export function toWei(n: number) { return parseUnits(n.toString(), DECIMALS); }
-export function fromWei(b: bigint | undefined) { 
+export function fromWei(b: bigint | number | undefined) { 
   if (!b) return '0 C4C'; 
-  return (Number(b) / 10**DECIMALS).toLocaleString() + ' C4C'; 
+  const val = typeof b === 'bigint' ? Number(b) : b;
+  return (val / 10**DECIMALS).toLocaleString() + ' C4C'; 
 }
 export function validateStake(s: number): boolean { 
   return (STAKE_LEVELS as readonly number[]).includes(s); 
 }
 export function formatPrizePool(s: number): string { return `${(s * 2).toLocaleString()} C4C`; }
 
-// 🔹 wagmi v2 Hooks (исправлено:  => txHash)
+// 🔹 wagmi v2 Hooks
 export function useApproveC4C() {
   const { writeContract,  txHash, isPending, isSuccess } = useWriteContract();
   const { isLoading: isConfirming } = useWaitForTransactionReceipt({ hash: txHash as `0x${string}` });
@@ -81,7 +82,7 @@ export function useClaimWinnings() {
   return { claim, txHash, isPending, isConfirming, isSuccess };
 }
 
-// 🔹 Чтение баланса (🔥 ИСПРАВЛЕНО ДЛЯ VERCEL: безопасная индексация)
+// 🔹 Чтение баланса (безопасная индексация)
 export function useGameBalance(id: string | null) {
   const {  data, isLoading } = useReadContract({ 
     address: GAME_ADDR, abi: GAME_ABI, functionName: 'getBalance', 
@@ -89,7 +90,6 @@ export function useGameBalance(id: string | null) {
     chainId: CHAIN_ID, 
     query: { enabled: !!id } 
   });
-  // 🔥 FIX: приводим data к unknown, затем к [bigint] для безопасной индексации
   const dataAsArray = data as any;
   const balanceValue = dataAsArray?.[0] as bigint | undefined;
   return { balance: fromWei(balanceValue), isLoading };
@@ -118,7 +118,7 @@ export function generateGameInvite(id: string, name: string, stake: number, time
   };
 }
 
-// 🔹 Шахматные часы (типизированный интерфейс)
+// 🔹 Шахматные часы
 export interface GameClock { 
   white: number; black: number; turn: 'w' | 'b'; active: boolean; finished: boolean; winner: 'w' | 'b' | null; 
 }
@@ -142,11 +142,10 @@ export function formatClock(seconds: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
-// 🔹 Экспорт всего (PATCH_023)
 export const PATCH_023 = { 
   TIME_CONTROLS, STAKE_LEVELS, MIN_STAKE, C4C_ADDR, GAME_ADDR, CHAIN_ID, DECIMALS, 
   C4C_ABI, GAME_ABI, toWei, fromWei, validateStake, formatPrizePool,
   useApproveC4C, useCreateGame, useJoinGame, useClaimWinnings, useGameBalance, 
   publishGameToLobby, getLobbyGames, generateGameInvite,
-  initClock, tickClock, makeMove, formatClock
+  initClock, tickClock, makeMove, formatClock 
 };
