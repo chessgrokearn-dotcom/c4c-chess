@@ -1,123 +1,72 @@
+// 🔹 MASTER CONFIG (Очищенный и рабочий)
 import { CONFIG_BASE } from './config-base';
+import { PATCH_024 } from './config-patch-024';
+import { PATCH_025 } from './config-patch-025';
 import { PATCH_026 } from './config-patch-026';
 
-export const CONFIG = { ...CONFIG_BASE, ...PATCH_026 };
-const C: any = CONFIG; // 🔹 Алиас для безопасного доступа
+// 🔹 Единый конфиг-объект (последний импорт перезаписывает дубли)
+export const CONFIG = {
+  ...CONFIG_BASE,
+  ...PATCH_024,
+  ...PATCH_025,
+  ...PATCH_026
+};
 
-// 🔹 БАЗА
-export const APP_NAME = C.APP_NAME;
-export const C4C_TOKEN_ADDRESS = C.C4C_ADDR || C.C4C_TOKEN || C.C4C_TOKEN_ADDRESS;
-export const GAME_CONTRACT_ADDRESS = C.GAME_ADDR || C.GAME_CONTRACT || C.GAME_CONTRACT_ADDRESS;
-export const CHAIN_ID = C.CHAIN_ID;
-export const C4C_BUY_URL = C.C4C_BUY_URL;
-export const C4C_EXCHANGE_URL = C.C4C_EXCHANGE_URL;
-export const YOUTUBE_URL = C.YOUTUBE_URL;
-export const YOUTUBE_BUTTON_TEXT = C.YOUTUBE_BUTTON_TEXT;
-export const YOUTUBE_SECTION_DESCRIPTION = C.YOUTUBE_SECTION_DESCRIPTION;
-export const SOCIAL_SECTION_TITLE = C.SOCIAL_SECTION_TITLE;
-export const SOCIAL_LINKS = C.SOCIAL_LINKS;
-export const SECTIONS = C.SECTIONS;
+// 🔹 БАЗА / UI
+export const APP_NAME = CONFIG.APP_NAME;
+export const C4C_BUY_URL = CONFIG.C4C_BUY_URL;
+export const UI_THEMES = CONFIG.UI_THEMES;
+export const UI_LANGS = CONFIG.UI_LANGS;
+export const UI_BOARDS = CONFIG.UI_BOARDS;
+export const UI_TRANSLATE = CONFIG.UI_TRANSLATE;
+export const FIXED_CSS = CONFIG.FIXED_CSS;
+export const injectGlobalStyles = CONFIG.injectGlobalStyles;
 
 // 🔹 ОПЦИИ ИГРЫ
-export const TIME_OPTIONS = C.TIME_CONTROLS || C.TIME_OPTIONS;
-export const STAKE_OPTIONS = C.STAKE_LEVELS || C.ALLOWED_STAKES || C.STAKE_OPTIONS;
-export const MIN_STAKE = C.MIN_STAKE;
-export const TIME_CONTROLS = C.TIME_CONTROLS;
-export const STAKE_LEVELS = C.STAKE_LEVELS;
-
-// 🔹 ФОРМАТИРОВАНИЕ
-export const formatTime = C.formatTime || C.formatClock;
-export const formatC4C = C.formatC4C || C.fromWei;
-export const formatPrizePool = C.formatPrizePool;
-export const formatClock = C.formatClock || C.formatClockExtended;
-
-// 🔹 ВАЛИДАЦИЯ
-export const validateStake = C.validateStake;
-export const validateGameConfig = C.validateGameConfig;
-
-// 🔹 UI / ТЕМЫ / ЯЗЫКИ
-export const UI_THEMES = C.UI_THEMES || C.CLASSIC_THEMES;
-export const UI_LANGS = C.UI_LANGS || C.LANGUAGES;
-export const UI_BOARDS = C.UI_BOARDS || C.SAFE_BOARD_THEMES;
-export const UI_TRANSLATE = C.UI_TRANSLATE || C.t;
-export const EXTENDED_BOARD_THEMES = C.EXTENDED_BOARD_THEMES;
-export const PIECE_STYLES = C.PIECE_STYLES;
+export const TIME_OPTIONS = CONFIG.TIME_CONTROLS || CONFIG.TIME_OPTIONS;
+export const STAKE_OPTIONS = CONFIG.STAKE_LEVELS || CONFIG.STAKE_OPTIONS;
+export const validateStake = CONFIG.validateStake;
+export const formatTime = CONFIG.formatTime;
+export const formatC4C = CONFIG.formatC4C || CONFIG.fromWei;
+export const formatPrizePool = CONFIG.formatPrizePool;
+export const formatClock = CONFIG.formatClock;
 
 // 🔹 ПРОФИЛЬ / СОХРАНЕНИЕ
-export const saveProfileToStorage = C.saveProfileToStorage;
-export const loadProfileFromStorage = C.loadProfileFromStorage;
-export const getFriends = C.getFriends;
-export const addFriend = C.addFriend;
+export const saveProfileToStorage = CONFIG.saveProfileToStorage;
+export const loadProfileFromStorage = CONFIG.loadProfileFromStorage;
+export const resetConnectionStates = CONFIG.resetConnectionStates;
+export const getBotMove = CONFIG.getBotMove;
+export const processPayout = CONFIG.processPayout;
 
-// 🔹 ПОДКЛЮЧЕНИЕ / WAGMI
-export const createWagmiConfig = C.createWagmiConfig;
-export const canConnectToMetaMask = C.canConnectToMetaMask;
-export const canConnectToWalletConnect = C.canConnectToWalletConnect;
-export const resetConnectionStates = C.resetConnectionStates;
+// 🔹 СОЦИАЛЬНЫЕ / ДРУЗЬЯ
+export const getFriends = CONFIG.getFriends;
+export const addFriend = CONFIG.addFriend;
+export const YOUTUBE_URL = CONFIG.YOUTUBE_URL;
+export const YOUTUBE_BUTTON_TEXT = CONFIG.YOUTUBE_BUTTON_TEXT;
+export const SOCIAL_SECTION_TITLE = CONFIG.SOCIAL_SECTION_TITLE;
+export const SOCIAL_LINKS = CONFIG.SOCIAL_LINKS;
 
-// 🔹 СТИЛИ / CSS
-export const FIXED_CSS = C.FIXED_CSS;
-export const injectGlobalStyles = C.injectGlobalStyles;
-
-// 🔹 КОНТРАКТЫ / УТИЛИТЫ
-export const C4C_ABI = C.C4C_ABI;
-export const GAME_ABI = C.GAME_ABI;
-export const toWei = C.toWei;
-export const fromWei = C.fromWei;
-export const toContractUnits = C.toContractUnits || C.toWei;
-export const fromContractUnits = C.fromContractUnits || C.fromWei;
-
-// 🔹 ХУКИ КОНТРАКТОВ
-export const useApproveC4C = C.useApproveC4C;
-export const useCreateTokenGame = C.useCreateTokenGame || C.useCreateGame;
-export const useJoinTokenGame = C.useJoinTokenGame || C.useJoinGame;
-export const useClaimWinnings = C.useClaimWinnings || C.useClaim;
-export const useGameBalance = C.useGameBalance || C.useGameBalanceManager;
-export const useGameBalanceManager = C.useGameBalanceManager;
-
-// 🔹 ИГРЫ / ЛОББИ
-export const createTokenGameSession = C.createTokenGameSession;
-export const createGameWithStake = C.createGameWithStake;
-export const joinGameWithStake = C.joinGameWithStake;
-export const publishGameToLobby = C.publishGameToLobby || C.publishGameToLobbyExtended;
-export const publishGameToLobbyExtended = C.publishGameToLobbyExtended;
-export const getLobbyGames = C.getLobbyGames || C.getLobbyGamesExtended;
-export const getLobbyGamesExtended = C.getLobbyGamesExtended;
-export const generateGameInvite = C.generateGameInvite || C.generateGameInviteExtended;
-export const generateGameInviteExtended = C.generateGameInviteExtended;
-export const sendInviteToChat = C.sendInviteToChat || C.sendInviteToChatExtended;
-export const sendInviteToChatExtended = C.sendInviteToChatExtended;
-export const canJoinGame = C.canJoinGame || C.canJoinGameExtended;
-export const canJoinGameExtended = C.canJoinGameExtended;
-export const processPayout = C.processPayout;
-export const getBotMove = C.getBotMove;
+// 🔹 ЛОББИ / ИГРЫ
+export const publishGameToLobby = CONFIG.publishGameToLobby;
+export const getLobbyGames = CONFIG.getLobbyGames;
+export const generateGameInvite = CONFIG.generateGameInvite;
+export const sendInviteToChat = CONFIG.sendInviteToChat;
+export const canJoinGame = CONFIG.canJoinGame;
 
 // 🔹 ШАХМАТНЫЕ ЧАСЫ
-export const initClock = C.initClock || C.initClockExtended;
-export const initClockExtended = C.initClockExtended;
-export const tickClock = C.tickClock || C.tickClockExtended;
-export const tickClockExtended = C.tickClockExtended;
-export const makeMove = C.makeMove || C.makeMoveExtended;
-export const makeMoveExtended = C.makeMoveExtended;
-export const formatClockExtended = C.formatClockExtended;
-export const checkTimeWin = C.checkTimeWin;
-export const processTimeWin = C.processTimeWin;
+export const initClock = CONFIG.initClock;
+export const tickClock = CONFIG.tickClock;
+export const makeMove = CONFIG.makeMove;
 
-// 🔹 ОКНО БАЛАНСА ИГРЫ
-export const GAME_BALANCE_WINDOW_TITLE = C.GAME_BALANCE_WINDOW_TITLE;
-export const GAME_BALANCE_JOIN_BUTTON = C.GAME_BALANCE_JOIN_BUTTON;
-export const GAME_BALANCE_CREATE_BUTTON = C.GAME_BALANCE_CREATE_BUTTON;
-export const GAME_BALANCE_INVITE_BUTTON = C.GAME_BALANCE_INVITE_BUTTON;
-
-// 🔹 ОПОВЕЩЕНИЯ
-export const createNotification = C.createNotification;
-export const getNotifications = C.getNotifications;
-export const markNotificationRead = C.markNotificationRead;
-export const playStartSound = C.playStartSound;
-export const showVisualAlert = C.showVisualAlert;
-export const checkAndStartGame = C.checkAndStartGame;
-export const updatePlayerPresence = C.updatePlayerPresence;
-export const areBothPlayersOnline = C.areBothPlayersOnline;
+// 🔹 ОПОВЕЩЕНИЯ / ОНЛАЙН
+export const createNotification = CONFIG.createNotification;
+export const getNotifications = CONFIG.getNotifications;
+export const markNotificationRead = CONFIG.markNotificationRead;
+export const playStartSound = CONFIG.playStartSound;
+export const showVisualAlert = CONFIG.showVisualAlert;
+export const checkAndStartGame = CONFIG.checkAndStartGame;
+export const updatePlayerPresence = CONFIG.updatePlayerPresence;
+export const areBothPlayersOnline = CONFIG.areBothPlayersOnline;
 
 // 🔹 ТИПЫ
 export type { GameNotification } from './config-patch-026';
