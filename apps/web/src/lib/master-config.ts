@@ -3,13 +3,15 @@ import { CONFIG_BASE } from './config-base';
 import { PATCH_024 } from './config-patch-024';
 import { PATCH_025 } from './config-patch-025';
 import { PATCH_026 } from './config-patch-026';
+import { PATCH_027 } from './config-patch-027';
 
 // 🔹 Единый конфиг-объект (последний импорт перезаписывает дубли)
 export const CONFIG = {
   ...CONFIG_BASE,
   ...PATCH_024,
   ...PATCH_025,
-  ...PATCH_026
+  ...PATCH_026,
+  ...PATCH_027
 };
 
 // 🔹 БАЗА / UI
