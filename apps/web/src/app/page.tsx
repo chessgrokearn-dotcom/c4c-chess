@@ -7,14 +7,13 @@ import {
   formatTime, formatC4C, getBotMove, saveProfileToStorage, loadProfileFromStorage,
   resetConnectionStates, getFriends, addFriend, processPayout,
   FIXED_CSS, injectGlobalStyles,
-  validateStake, formatPrizePool, formatClock,
+  validateStake, formatPrizePool, formatClockExtended,
   useApproveC4C, useCreateTokenGame, useJoinTokenGame, useClaimWinnings, useGameBalance,
   publishGameToLobby, getLobbyGames, generateGameInvite, sendInviteToChat, canJoinGame,
-  initClock, tickClock, makeMove,
   GAME_BALANCE_WINDOW_TITLE, GAME_BALANCE_JOIN_BUTTON, GAME_BALANCE_CREATE_BUTTON, GAME_BALANCE_INVITE_BUTTON,
   createGameWithStake, joinGameWithStake, useGameBalanceManager, publishGameToLobbyExtended,
   getLobbyGamesExtended, generateGameInviteExtended, sendInviteToChatExtended, canJoinGameExtended,
-  initClockExtended, tickClockExtended, makeMoveExtended, checkTimeWin, formatClockExtended, processTimeWin
+  initClockExtended, tickClockExtended, makeMoveExtended, checkTimeWin, processTimeWin
 } from '@/lib/config'
 
 const PIECES: any = { p:{w:'♙',b:'♟'}, n:{w:'♘',b:'♞'}, b:{w:'♗',b:'♝'}, r:{w:'♖',b:'♜'}, q:{w:'♕',b:'♛'}, k:{w:'♔',b:'♚'} }
@@ -53,6 +52,7 @@ export default function Page() {
   const { create: createOnChain, isPending: crePending } = useCreateTokenGame()
   const { join: joinOnChain, isPending: joinPending } = useJoinTokenGame()
   const { claim, isPending: claimPending } = useClaimWinnings()
+  const { balance: onChainBalance, isLoading: balLoading } = useGameBalance(currentGame?.id || null)
   const { balance: gameBalance, updateBalance } = useGameBalanceManager(currentGame?.id || null);
 
   useEffect(() => { if (isClient && FIXED_CSS) injectGlobalStyles(FIXED_CSS) }, [isClient])
@@ -193,7 +193,7 @@ export default function Page() {
           </div>
           <div><label style={{fontSize:12,opacity:.7}}>💰 Ставка</label>
             <select value={stake} onChange={(e:any)=>setStake(Number(e.target.value))} style={{width:'100%',padding:8,marginTop:4,borderRadius:6}}>
-              {STAKE_OPTIONS.map(val=><option key={val} value={val}>{val.toLocaleString()} C4C</option>)}
+              {STAKE_OPTIONS.map((val: number)=><option key={val} value={val}>{val.toLocaleString()} C4C</option>)}
             </select>
           </div>
         </div>
@@ -209,7 +209,7 @@ export default function Page() {
           <div key={g.gameId || g.id} style={{padding:12,background:'var(--bg)',borderRadius:8,marginBottom:8,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
             <div>
               <p style={{fontWeight:600}}>🎮 {(g.gameId || g.id).slice(0,12)}... | 👤 {g.creator.slice(2,6)}...</p>
-              <p style={{fontSize:12,opacity:.6}}>💰 Баланс: {g.currentBalance ? formatC4C(g.currentBalance) : (balLoading ? '...' : (onChainBalance || g.balance?.toLocaleString() || '0') + ' C4C')} | ⏱️ {(g.timeControl || g.timeCtrl)/60}м</p>
+              <p style={{fontSize:12,opacity:.6}}>💰 Баланс: {g.currentBalance ? formatC4C(g.currentBalance) : (onChainBalance || g.balance?.toLocaleString() || '0') + ' C4C'} | ⏱️ {(g.timeControl || g.timeCtrl)/60}м</p>
             </div>
             <div style={{display:'flex',gap:6}}>
               <button onClick={()=>handleJoinGame(g)} disabled={joinPending} style={{padding:'6px 12px',background:'#3b82f6',color:'#fff',borderRadius:6}}>{joinPending?'⏳...':GAME_BALANCE_JOIN_BUTTON}</button>
