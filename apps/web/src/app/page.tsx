@@ -1,6 +1,5 @@
 'use client'
 export const dynamic = 'force-dynamic';
-export const revalidate = 0;
 import { useState, useEffect, ChangeEvent } from 'react'
 import { useAccount, useConnect, useDisconnect, useConnectors, useBalance } from 'wagmi'
 import { Chess } from 'chess.js'
