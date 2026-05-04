@@ -23,7 +23,7 @@ import {
   initClockExtended, tickClockExtended, makeMoveExtended, checkTimeWin, processTimeWin,
   SECTIONS, YOUTUBE_URL, YOUTUBE_BUTTON_TEXT, C4C_EXCHANGE_URL, SOCIAL_SECTION_TITLE, SOCIAL_LINKS, YOUTUBE_SECTION_DESCRIPTION,
   EXTENDED_BOARD_THEMES, PIECE_STYLES,
-  GameNotification, createNotification, getNotifications, markNotificationRead, playStartSound, showVisualAlert, checkAndStartGame, updatePlayerPresence, areBothPlayersOnline
+  createNotification, getNotifications, markNotificationRead, playStartSound, showVisualAlert, checkAndStartGame, updatePlayerPresence, areBothPlayersOnline
 } from '@/lib/config'
 
 const PIECES: any = { p:{w:'♙',b:'♟'}, n:{w:'♘',b:'♞'}, b:{w:'♗',b:'♝'}, r:{w:'♖',b:'♜'}, q:{w:'♕',b:'♛'}, k:{w:'♔',b:'♚'} }
@@ -56,7 +56,7 @@ export default function Page() {
   const [friends, setFriends] = useState<any[]>([])
   const [newFriendAddr, setNewFriendAddr] = useState('')
   const [clock, setClock] = useState<any>(null)
-  const [notifications, setNotifications] = useState<GameNotification[]>([])
+  const [notifications, setNotifications] = useState<[]>([])
   const [notificationFilter, setNotificationFilter] = useState<'all' | 'unread'>('all')
 
   const balanceResult = useBalance({ address, token: '0xaac20575371de01b4d10c4e7566d5453d72d56e7' as `0x${string}`, query: { enabled: !!address && chain?.id === 56 } })
@@ -337,7 +337,7 @@ export default function Page() {
         {notifications.length === 0 ? (
           <p style={{opacity:.7}}>Нет оповещений</p>
         ) : (
-          notifications.map((notif: GameNotification) => (
+          notifications.map((notif: ) => (
             <div key={notif.id} onClick={() => markNotificationRead(notif.id)} style={{
               padding:12,
               background:notif.read ? 'var(--bg)' : 'linear-gradient(135deg, var(--accent), rgba(59, 130, 246, 0.1))',
