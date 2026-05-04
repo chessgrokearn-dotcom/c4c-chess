@@ -1,4 +1,4 @@
-'use client'
+]633;E;head -3 /workspaces/c4c-chess/apps/web/src/app/page.tsx;7b4cea43-a490-4fa8-9377-7f5dc59530a3]633;C]633;E;head -3 /workspaces/c4c-chess/apps/web/src/app/page.tsx;7b4cea43-a490-4fa8-9377-7f5dc59530a3]633;C'use client'
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 import { useState, useEffect, ChangeEvent } from 'react'
@@ -8,32 +8,15 @@ import {
   APP_NAME, C4C_BUY_URL, TIME_OPTIONS, STAKE_OPTIONS, UI_THEMES, UI_LANGS, UI_BOARDS, UI_TRANSLATE,
   formatTime, formatC4C, getBotMove, saveProfileToStorage, loadProfileFromStorage,
   resetConnectionStates, getFriends, addFriend, processPayout,
-  FIXED_CSS, injectGlobalStyles,
-  validateStake, formatPrizePool, formatClock,
+  FIXED_CSS, injectGlobalStyles, validateStake, formatPrizePool, formatClock,
   useApproveC4C, useCreateTokenGame, useJoinTokenGame, useClaimWinnings, useGameBalance,
   publishGameToLobby, getLobbyGames, generateGameInvite, sendInviteToChat, canJoinGame,
-  initClock, tickClock, makeMove
-} from '@/lib/config'
-  validateStake, formatPrizePool, formatClockExtended,
-  useApproveC4C, useCreateTokenGame, useJoinTokenGame, useClaimWinnings, useGameBalance,
-  publishGameToLobby, getLobbyGames, generateGameInvite, sendInviteToChat, canJoinGame,
-  GAME_BALANCE_WINDOW_TITLE, GAME_BALANCE_JOIN_BUTTON, GAME_BALANCE_CREATE_BUTTON, GAME_BALANCE_INVITE_BUTTON,
-  createGameWithStake, joinGameWithStake, useGameBalanceManager, publishGameToLobbyExtended,
-  getLobbyGamesExtended, generateGameInviteExtended, sendInviteToChatExtended, canJoinGameExtended,
-  initClockExtended, tickClockExtended, makeMoveExtended, checkTimeWin, processTimeWin,
+  initClock, tickClock, makeMove,
   SECTIONS, YOUTUBE_URL, YOUTUBE_BUTTON_TEXT, C4C_EXCHANGE_URL, SOCIAL_SECTION_TITLE, SOCIAL_LINKS, YOUTUBE_SECTION_DESCRIPTION,
   EXTENDED_BOARD_THEMES, PIECE_STYLES,
   createNotification, getNotifications, markNotificationRead, playStartSound, showVisualAlert, checkAndStartGame, updatePlayerPresence, areBothPlayersOnline
 } from '@/lib/config'
-
-const PIECES: any = { p:{w:'♙',b:'♟'}, n:{w:'♘',b:'♞'}, b:{w:'♗',b:'♝'}, r:{w:'♖',b:'♜'}, q:{w:'♕',b:'♛'}, k:{w:'♔',b:'♚'} }
-const getPieceSymbol = (p: any) => (!p || !p.type || !p.color) ? '' : PIECES[p.type]?.[p.color] || ''
-
-export default function Page() {
-  const { address, isConnected, chain } = useAccount()
-  const { connect, isPending: walletPending } = useConnect()
-  const { disconnect } = useDisconnect()
-  const connectors = useConnectors()
+import type { GameNotification } from '@/lib/config';
 
   const [showModal, setShowModal] = useState(false)
   const [isClient, setIsClient] = useState(false)
