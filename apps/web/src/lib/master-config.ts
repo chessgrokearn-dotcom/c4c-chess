@@ -1,25 +1,45 @@
 import { CONFIG_BASE } from './config-base';
-import { PATCH_001 } from './config-patch-001'; import { PATCH_002 } from './config-patch-002'; import { PATCH_003 } from './config-patch-003'; import { PATCH_004 } from './config-patch-004'; import { PATCH_005 } from './config-patch-005'; import { PATCH_006 } from './config-patch-006'; import { PATCH_007 } from './config-patch-007'; import { PATCH_008 } from './config-patch-008'; import { PATCH_009 } from './config-patch-009'; import { PATCH_010 } from './config-patch-010'; import { PATCH_011 } from './config-patch-011'; import { PATCH_014 } from './config-patch-014'; import { PATCH_015 } from './config-patch-015'; import { PATCH_016 } from './config-patch-016'; import { PATCH_017 } from './config-patch-017'; import { PATCH_018 } from './config-patch-018'; import { PATCH_019 } from './config-patch-019'; import { PATCH_020 } from './config-patch-020'; import { PATCH_021 } from './config-patch-021'; import { PATCH_022 } from './config-patch-022'; import { PATCH_023 } from './config-patch-023';
+// 🔹 Оставляем ТОЛЬКО рабочие патчи (остальные закомментированы до лучших времён)
+// import { PATCH_001 } from './config-patch-001'; 
+// import { PATCH_002 } from './config-patch-002';
+// import { PATCH_003 } from './config-patch-003';
+// import { PATCH_004 } from './config-patch-004';
+// import { PATCH_005 } from './config-patch-005';
+// import { PATCH_006 } from './config-patch-006';
+// import { PATCH_007 } from './config-patch-007';
+// import { PATCH_008 } from './config-patch-008';
+// import { PATCH_009 } from './config-patch-009';
+// import { PATCH_010 } from './config-patch-010';
+// import { PATCH_011 } from './config-patch-011';
+// import { PATCH_014 } from './config-patch-014';
+// import { PATCH_015 } from './config-patch-015';
+// import { PATCH_016 } from './config-patch-016';
+// import { PATCH_017 } from './config-patch-017';
+// import { PATCH_018 } from './config-patch-018'; // <-- Здесь была ошибка
+// import { PATCH_019 } from './config-patch-019';
+// import { PATCH_020 } from './config-patch-020';
+// import { PATCH_021 } from './config-patch-021';
+// import { PATCH_022 } from './config-patch-022';
+import { PATCH_023 } from './config-patch-023'; // 🔥 Единственный активный патч с логикой
 
+// 🔹 КОНСТРУКТОР: Собираем только рабочее
 export const CONFIG = {
   ...CONFIG_BASE,
-  ...PATCH_001, ...PATCH_002, ...PATCH_003, ...PATCH_004,
-  ...PATCH_005, ...PATCH_006, ...PATCH_007, ...PATCH_008, ...PATCH_009,
-  ...PATCH_010, ...PATCH_011, ...PATCH_014, ...PATCH_015, ...PATCH_016,
-  ...PATCH_017, ...PATCH_018, ...PATCH_019, ...PATCH_020, ...PATCH_021, ...PATCH_022, ...PATCH_023
+  // ...PATCH_001, ...PATCH_002, ... (закомментировано)
+  ...PATCH_023 // 🔥 Активная логика
 };
 
-// 🔹 ЯВНЫЕ ЭКСПОРТЫ (приоритет: Патч 023)
+// 🔹 ЯВНЫЕ ЭКСПОРТЫ (всё берём из PATCH_023 или CONFIG_BASE)
 export const APP_NAME = CONFIG.APP_NAME;
-export const C4C_TOKEN_ADDRESS = CONFIG.C4C_TOKEN_ADDRESS || CONFIG.C4C_ADDR;
-export const GAME_CONTRACT_ADDRESS = CONFIG.GAME_CONTRACT_ADDRESS || CONFIG.GAME_ADDR;
+export const C4C_TOKEN_ADDRESS = CONFIG.C4C_ADDR;
+export const GAME_CONTRACT_ADDRESS = CONFIG.GAME_ADDR;
 export const CHAIN_ID = CONFIG.CHAIN_ID;
-export const C4C_BUY_URL = CONFIG.C4C_BUY_URL;
-export const TIME_OPTIONS = CONFIG.TIME_CONTROLS || CONFIG.TIME_OPTIONS;
+export const C4C_BUY_URL = CONFIG.C4C_BUY_URL || 'https://www.pink.meme/token/bsc/0xaac20575371de01b4d10c4e7566d5453d72d56e7';
+export const TIME_OPTIONS = CONFIG.TIME_CONTROLS;
 export const STAKE_OPTIONS = CONFIG.STAKE_LEVELS;
 export const MIN_STAKE = CONFIG.MIN_STAKE;
-export const formatTime = CONFIG.formatTime || CONFIG.formatClock;
-export const formatC4C = CONFIG.formatC4C || CONFIG.fromWei;
+export const formatTime = CONFIG.formatClock;
+export const formatC4C = CONFIG.fromWei;
 export const formatPrizePool = CONFIG.formatPrizePool;
 export const validateStake = CONFIG.validateStake;
 export const getBotMove = CONFIG.getBotMove;
@@ -34,27 +54,31 @@ export const injectGlobalStyles = CONFIG.injectGlobalStyles;
 export const getFriends = CONFIG.getFriends;
 export const addFriend = CONFIG.addFriend;
 export const processPayout = CONFIG.processPayout;
-export const getOnlineGames = CONFIG.getOnlineGames || CONFIG.getLobbyGames;
-export const UI_THEMES = CONFIG.UI_THEMES || CONFIG.CLASSIC_THEMES;
-export const UI_LANGS = CONFIG.UI_LANGS || CONFIG.LANGUAGES;
-export const UI_BOARDS = CONFIG.UI_BOARDS || CONFIG.SAFE_BOARD_THEMES;
-export const UI_TRANSLATE = CONFIG.UI_TRANSLATE || CONFIG.t;
+export const getOnlineGames = CONFIG.getLobbyGames;
+export const UI_THEMES = CONFIG.UI_THEMES;
+export const UI_LANGS = CONFIG.UI_LANGS;
+export const UI_BOARDS = CONFIG.UI_BOARDS;
+export const UI_TRANSLATE = CONFIG.UI_TRANSLATE;
 
-export const C4C_ABI = CONFIG.C4C_ABI; export const GAME_ABI = CONFIG.GAME_ABI;
-export const toContractUnits = CONFIG.toContractUnits || CONFIG.toWei;
+// 🔹 КОНТРАКТЫ / ХУКИ (из PATCH_023)
+export const C4C_ABI = CONFIG.C4C_ABI;
+export const GAME_ABI = CONFIG.GAME_ABI;
+export const toContractUnits = CONFIG.toWei;
 export const useApproveC4C = CONFIG.useApproveC4C;
-export const useCreateTokenGame = CONFIG.useCreateTokenGame || CONFIG.useCreateGame;
-export const useJoinTokenGame = CONFIG.useJoinTokenGame || CONFIG.useJoinGame;
-export const useClaimWinnings = CONFIG.useClaimWinnings || CONFIG.useClaim;
-export const useGameBalance = CONFIG.useGameBalance; // 🔥 Из Патча 023 (Vercel-safe)
+export const useCreateTokenGame = CONFIG.useCreateGame;
+export const useJoinTokenGame = CONFIG.useJoinGame;
+export const useClaimWinnings = CONFIG.useClaimWinnings;
+export const useGameBalance = CONFIG.useGameBalance;
 
+// 🔹 ИГРЫ / ЛОББИ
 export const createTokenGameSession = CONFIG.createTokenGameSession;
 export const publishGameToLobby = CONFIG.publishGameToLobby;
 export const getLobbyGames = CONFIG.getLobbyGames;
 export const generateGameInvite = CONFIG.generateGameInvite;
 export const sendInviteToChat = CONFIG.sendInviteToChat;
-export const canJoinGame = CONFIG.canJoinGame || (async () => ({ canJoin: true }));
+export const canJoinGame = CONFIG.canJoinGame;
 
+// 🔹 ШАХМАТНЫЕ ЧАСЫ
 export const initClock = CONFIG.initClock;
 export const tickClock = CONFIG.tickClock;
 export const makeMove = CONFIG.makeMove;
