@@ -793,4 +793,3 @@ export const PATCH_026 = {
   addFriend,
   processPayout,
   getLobbyGames
-};export type { GameNotification };
