@@ -14,7 +14,9 @@ import {
   createGameWithStake, joinGameWithStake, useGameBalanceManager, publishGameToLobbyExtended,
   getLobbyGamesExtended, generateGameInviteExtended, sendInviteToChatExtended, canJoinGameExtended,
   initClockExtended, tickClockExtended, makeMoveExtended, checkTimeWin, processTimeWin,
-  SECTIONS, YOUTUBE_URL, YOUTUBE_BUTTON_TEXT, C4C_EXCHANGE_URL, SOCIAL_SECTION_TITLE, SOCIAL_LINKS, YOUTUBE_SECTION_DESCRIPTION
+  SECTIONS, YOUTUBE_URL, YOUTUBE_BUTTON_TEXT, C4C_EXCHANGE_URL, SOCIAL_SECTION_TITLE, SOCIAL_LINKS, YOUTUBE_SECTION_DESCRIPTION,
+  EXTENDED_BOARD_THEMES, PIECE_STYLES,
+  GameNotification, createNotification, getNotifications, markNotificationRead, playStartSound, showVisualAlert, checkAndStartGame, updatePlayerPresence, areBothPlayersOnline
 } from '@/lib/config'
 
 const PIECES: any = { p:{w:'♙',b:'♟'}, n:{w:'♘',b:'♞'}, b:{w:'♗',b:'♝'}, r:{w:'♖',b:'♜'}, q:{w:'♕',b:'♛'}, k:{w:'♔',b:'♚'} }
@@ -29,6 +31,8 @@ export default function Page() {
   const [showModal, setShowModal] = useState(false)
   const [isClient, setIsClient] = useState(false)
   const [tab, setTab] = useState('profile')
+  const [isEditingProfile, setIsEditingProfile] = useState(false)
+  const [opponent, setOpponent] = useState<any>(null)
   const [profile, setProfile] = useState<any>({ id:'', name:'', theme:'classic', boardTheme:'blue', description:'', avatar:'', link1Name:'', link1Url:'', link2Name:'', link2Url:'', lang:'ru' })
   
   const [fen, setFen] = useState(() => new Chess().fen())
@@ -45,6 +49,8 @@ export default function Page() {
   const [friends, setFriends] = useState<any[]>([])
   const [newFriendAddr, setNewFriendAddr] = useState('')
   const [clock, setClock] = useState<any>(null)
+  const [notifications, setNotifications] = useState<GameNotification[]>([])
+  const [notificationFilter, setNotificationFilter] = useState<'all' | 'unread'>('all')
 
   const balanceResult = useBalance({ address, token: '0xaac20575371de01b4d10c4e7566d5453d72d56e7' as `0x${string}`, query: { enabled: !!address && chain?.id === 56 } })
   const balance = balanceResult.data
@@ -63,6 +69,21 @@ export default function Page() {
     else if (address) setProfile((p:any) => ({ ...p, id: address, name: p.name || `Player_${address.slice(2,8)}` }))
     setGames(getLobbyGamesExtended()); setFriends(getFriends())
   }, [address])
+
+  // Heartbeat для онлайн-проверки
+  useEffect(() => {
+    if (!address || !isConnected) return;
+    const interval = setInterval(() => updatePlayerPresence(address), 5000);
+    return () => clearInterval(interval);
+  }, [address, isConnected]);
+
+  // Обновление оповещений
+  useEffect(() => {
+    const updateNotifs = () => setNotifications(getNotifications(notificationFilter));
+    updateNotifs();
+    const interval = setInterval(updateNotifs, 2000);
+    return () => clearInterval(interval);
+  }, [notificationFilter]);
 
   useEffect(() => {
     if (profile.theme && isClient) { const th = (UI_THEMES as any)[profile.theme]
@@ -94,7 +115,7 @@ export default function Page() {
   const handleCreateGame = async () => {
     if (!validateStake(stake)) { alert('❌ Выбери ставку из списка'); return; }
     if (!address) { alert('🔗 Подключи кошелёк'); return; }
-    if (!confirm(`🎮 Создать игру?\n💰 Ставка: ${formatC4C(stake)} C4C\n🏆 Фонд: ${formatPrizePool(stake)}\n⚠️ Токены спишутся в баланс игры.`)) return;
+    if (!confirm(`🎮 Создать игру?\n💰 Ставка: ${formatC4C(BigInt(stake * 10**6))} C4C\n🏆 Фонд: ${formatPrizePool(stake)}\n⚠️ Токены спишутся в баланс игры.`)) return;
     try {
       await approve(stake); await createOnChain(timeCtrl, stake);
       const gameData = createGameWithStake(timeCtrl, stake, address);
@@ -117,7 +138,7 @@ export default function Page() {
     if (!canJoinGameExtended(g, address)) return alert('❌ Нельзя присоединиться');
     const gameId = g.gameId || g.id;
     if (!gameId) return alert('❌ Неверный идентификатор игры');
-    if (!confirm(`Присоединиться? Ставка: ${formatC4C(g.stake)} C4C`)) return;
+    if (!confirm(`Присоединиться? Ставка: ${formatC4C(BigInt(g.stake * 10**6))} C4C`)) return;
     try { 
       await approve(g.stake); await joinOnChain(gameId); 
       joinGameWithStake(gameId, g.stake, address);
@@ -174,7 +195,7 @@ export default function Page() {
           <div>
             <div style={{fontSize:22,fontWeight:700}}>{APP_NAME}</div>
             {address && <div style={{fontSize:13,opacity:.8,marginTop:4}}>Адрес: <span style={{fontFamily:'monospace'}}>{address}</span></div>}
-            {balance?.value && <div style={{fontSize:13,opacity:.8}}>Баланс C4C: <strong>{formatC4C(balance.value)} C4C</strong></div>}
+            {balance?.value && <div style={{fontSize:13,opacity:.8}}>Баланс C4C: <strong>{formatC4C(balance.value)}</strong></div>}
           </div>
         </div>
         <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
@@ -189,31 +210,55 @@ export default function Page() {
       </div>
 
       {tab==='profile' && <div style={{background:'var(--card)',padding:20,borderRadius:16}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}>
+          <h3 style={{margin:0}}>👤 Профиль</h3>
+          {!isEditingProfile ? (
+            <button onClick={()=>setIsEditingProfile(true)} style={{padding:'8px 16px',background:'#3b82f6',color:'#fff',borderRadius:8,fontWeight:600}}>✏️ Редактировать</button>
+          ) : (
+            <button onClick={()=>{setIsEditingProfile(false);saveProfileToStorage(profile)}} style={{padding:'8px 16px',background:'var(--success)',color:'#fff',borderRadius:8,fontWeight:600}}>💾 Сохранить</button>
+          )}
+        </div>
         <div style={{display:'flex',gap:16,alignItems:'flex-start',marginBottom:16}}>
           <label style={{width:80,height:80,borderRadius:'50%',background:'var(--bg)',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',overflow:'hidden',border:'3px solid var(--accent)'}}>
             {profile.avatar ? <img src={profile.avatar} style={{width:'100%',height:'100%',objectFit:'cover'}}/> : <span style={{fontSize:28}}>📷</span>}
-            <input type="file" accept="image/*" onChange={handleImageUpload} style={{display:'none'}}/>
+            {isEditingProfile && <input type="file" accept="image/*" onChange={handleImageUpload} style={{display:'none'}}/>}
           </label>
           <div style={{flex:1}}>
-            <input value={profile.name} onChange={(e:any)=>updateProfile({name:e.target.value})} placeholder="Ваше имя" style={{padding:10,fontWeight:600,marginBottom:6}}/>
-            <p style={{fontSize:13,opacity:.7}}>Баланс: <span style={{fontSize:18,fontWeight:'bold',color:'var(--accent)'}}>{formatC4C(balance?.value)} C4C</span></p>
+            {isEditingProfile ? (
+              <input value={profile.name} onChange={(e:any)=>updateProfile({name:e.target.value})} placeholder="Ваше имя" style={{width:'100%',padding:10,fontWeight:600,marginBottom:6}}/>
+            ) : (
+              <h4 style={{fontSize:20,fontWeight:700,margin:0,marginBottom:8}}>{profile.name}</h4>
+            )}
+            <p style={{fontSize:13,opacity:.7}}>Баланс: <span style={{fontSize:18,fontWeight:'bold',color:'var(--accent)'}}>{formatC4C(balance?.value)}</span></p>
             <a href={C4C_BUY_URL} target="_blank" rel="noopener noreferrer" style={{display:'inline-block',marginTop:8,padding:'8px 16px',background:'linear-gradient(135deg,#ec4899,#db2777)',color:'#fff',textDecoration:'none',borderRadius:8,fontSize:13}}>🛒 Купить C4C</a>
           </div>
         </div>
-        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginTop:4}}>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginTop:12}}>
           <div><label style={{fontSize:12,opacity:.7}}>🌍 Язык</label>
-            <select value={profile.lang} onChange={(e:any)=>updateProfile({lang:e.target.value})} style={{width:'100%',padding:8,marginTop:4,borderRadius:6}}>
+            <select value={profile.lang} onChange={(e:any)=>updateProfile({lang:e.target.value})} disabled={!isEditingProfile} style={{width:'100%',padding:8,marginTop:4,borderRadius:6,opacity:isEditingProfile?1:0.6,cursor:isEditingProfile?'pointer':'not-allowed'}}>
               {Object.values(UI_LANGS).map((lang:any)=><option key={lang.name} value={lang.name}>{lang.name}</option>)}
             </select>
           </div>
-          <div><label style={{fontSize:12,opacity:.7}}>🎨 Тема</label>
-            <select value={profile.theme} onChange={(e:any)=>updateProfile({theme:e.target.value})} style={{width:'100%',padding:8,marginTop:4,borderRadius:6}}>
+          <div><label style={{fontSize:12,opacity:.7}}>🎨 Тема окна</label>
+            <select value={profile.theme} onChange={(e:any)=>updateProfile({theme:e.target.value})} disabled={!isEditingProfile} style={{width:'100%',padding:8,marginTop:4,borderRadius:6,opacity:isEditingProfile?1:0.6,cursor:isEditingProfile?'pointer':'not-allowed'}}>
               {Object.keys(UI_THEMES).map((theme:any)=><option key={theme} value={theme}>{theme}</option>)}
+            </select>
+          </div>
+          <div><label style={{fontSize:12,opacity:.7}}>♟️ Доска</label>
+            <select value={profile.boardTheme} onChange={(e:any)=>updateProfile({boardTheme:e.target.value})} disabled={!isEditingProfile} style={{width:'100%',padding:8,marginTop:4,borderRadius:6,opacity:isEditingProfile?1:0.6,cursor:isEditingProfile?'pointer':'not-allowed'}}>
+              {Object.entries(EXTENDED_BOARD_THEMES).map(([key,theme]:any)=><option key={key} value={key}>{theme.name}</option>)}
+            </select>
+          </div>
+          <div><label style={{fontSize:12,opacity:.7}}>🎯 Размер фигур</label>
+            <select value={profile.pieceSize || 'LARGE'} onChange={(e:any)=>updateProfile({pieceSize:e.target.value})} disabled={!isEditingProfile} style={{width:'100%',padding:8,marginTop:4,borderRadius:6,opacity:isEditingProfile?1:0.6,cursor:isEditingProfile?'pointer':'not-allowed'}}>
+              <option value="STANDARD">Обычный</option>
+              <option value="LARGE">Крупный</option>
+              <option value="EXTRA_LARGE">Очень крупный</option>
             </select>
           </div>
         </div>
         <p style={{fontSize:14,marginTop:12}}>Описание профиля:</p>
-        <textarea value={profile.description} onChange={(e:any)=>updateProfile({description:e.target.value})} rows={4} style={{width:'100%',padding:12,borderRadius:10,marginTop:6}} placeholder="Расскажите о себе..." />
+        <textarea value={profile.description} onChange={(e:any)=>updateProfile({description:e.target.value})} disabled={!isEditingProfile} rows={3} style={{width:'100%',padding:12,borderRadius:10,marginTop:6,opacity:isEditingProfile?1:0.6,cursor:isEditingProfile?'auto':'not-allowed'}} placeholder="Расскажите о себе..." />
       </div>}
 
       {tab==='create' && <div style={{background:'var(--card)',padding:20,borderRadius:16}}>
@@ -276,7 +321,51 @@ export default function Page() {
         {friends.length===0 ? <p style={{opacity:.7}}>Нет друзей</p> : friends.map((f:any)=>(<div key={f.address} style={{padding:10,background:'var(--bg)',borderRadius:8,marginBottom:6,display:'flex',justifyContent:'space-between'}}><span>{f.name}</span><button onClick={()=>alert(`📩 ${f.name}`)} style={{background:'var(--success)',color:'#fff',padding:'4px 10px',borderRadius:4}}>📩</button></div>))}
       </div>}
 
+      {tab==='notifications' && <div style={{background:'var(--card)',padding:20,borderRadius:16}}>
+        <h3 style={{marginBottom:12}}>🔔 Оповещения</h3>
+        <div style={{display:'flex',gap:8,marginBottom:16}}>
+          <button onClick={()=>setNotificationFilter('all')} style={{padding:'8px 16px',background:notificationFilter==='all'?'var(--accent)':'var(--bg)',borderRadius:8,color:notificationFilter==='all'?'#000':'var(--text)'}}>Все</button>
+          <button onClick={()=>setNotificationFilter('unread')} style={{padding:'8px 16px',background:notificationFilter==='unread'?'var(--accent)':'var(--bg)',borderRadius:8,color:notificationFilter==='unread'?'#000':'var(--text)'}}>Непрочитанные</button>
+        </div>
+        {notifications.length === 0 ? (
+          <p style={{opacity:.7}}>Нет оповещений</p>
+        ) : (
+          notifications.map((notif: GameNotification) => (
+            <div key={notif.id} onClick={() => markNotificationRead(notif.id)} style={{
+              padding:12,
+              background:notif.read ? 'var(--bg)' : 'linear-gradient(135deg, var(--accent), rgba(59, 130, 246, 0.1))',
+              borderRadius:8,
+              marginBottom:8,
+              cursor:'pointer',
+              border: notif.read ? 'none' : '2px solid var(--accent)',
+              position:'relative'
+            }}>
+              {!notif.read && <div style={{position:'absolute',top:8,right:8,width:8,height:8,background:'#10b981',borderRadius:'50%'}}></div>}
+              <h4 style={{margin:'0 0 4px 0',fontSize:16}}>{notif.title}</h4>
+              <p style={{margin:'0 0 4px 0',fontSize:14,opacity:.8}}>{notif.message}</p>
+              <small style={{opacity:.6}}>{new Date(notif.timestamp).toLocaleString()}</small>
+            </div>
+          ))
+        )}
+      </div>}
+
       <div style={{marginTop:16,background:'var(--card)',padding:16,borderRadius:16}}>
+        {currentGame && opponent && (
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:16}}>
+            <div style={{padding:12,background:'var(--bg)',borderRadius:8,textAlign:'center'}}>
+              <h4 style={{margin:'0 0 8px 0'}}>👤 Вы</h4>
+              <div style={{fontSize:20,fontWeight:700,marginBottom:8}}>{profile.avatar && <img src={profile.avatar} style={{width:40,height:40,borderRadius:'50%',marginBottom:8}}/>}</div>
+              <p style={{fontSize:13,fontWeight:600,margin:0}}>{profile.name}</p>
+              <p style={{fontSize:12,opacity:.7,margin:'4px 0'}}>{address?.slice(0,6)}...{address?.slice(-4)}</p>
+            </div>
+            <div style={{padding:12,background:'var(--bg)',borderRadius:8,textAlign:'center'}}>
+              <h4 style={{margin:'0 0 8px 0'}}>🎮 Соперник</h4>
+              <div style={{fontSize:20,fontWeight:700,marginBottom:8}}>{opponent.avatar && <img src={opponent.avatar} style={{width:40,height:40,borderRadius:'50%',marginBottom:8}}/>}</div>
+              <p style={{fontSize:13,fontWeight:600,margin:0}}>{opponent.name}</p>
+              <p style={{fontSize:12,opacity:.7,margin:'4px 0'}}>{opponent.address?.slice(0,6)}...{opponent.address?.slice(-4)}</p>
+            </div>
+          </div>
+        )}
         {currentGame && (
           <div style={{padding:12,background:'var(--bg)',borderRadius:8,marginBottom:12,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
             <div>
@@ -289,16 +378,19 @@ export default function Page() {
             </div>}
           </div>
         )}
-        <div style={{display:'grid',gridTemplateColumns:'repeat(8,1fr)',gap:0,maxWidth:360,margin:'0 auto',borderRadius:8,overflow:'hidden',boxShadow:'0 4px 12px rgba(0,0,0,.4)'}}>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(8,1fr)',gap:0,maxWidth:400,margin:'0 auto',borderRadius:8,overflow:'hidden',boxShadow:'0 4px 12px rgba(0,0,0,.4)'}}>
           {['8','7','6','5','4','3','2','1'].map((r,ri)=>['a','b','c','d','e','f','g','h'].map((f,fi)=>{
-            const sq=f+r; const p=chess.get(sq as any); const boardT = (UI_BOARDS as any)[profile.boardTheme] || (UI_BOARDS as any).blue; 
-            const bg=(fi+ri)%2===0 ? boardT.light : boardT.dark
-            return <div key={sq} onClick={()=>click(sq)} style={{aspectRatio:1,background:bg,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',position:'relative',border:selected===sq?'3px solid var(--accent)':'none'}}>
-              {fi===0 && <span style={{position:'absolute',top:2,left:4,fontSize:10,fontWeight:700,color:(fi+ri)%2===0?boardT.dark:boardT.light,opacity:.7,pointerEvents:'none'}}>{r}</span>}
-              {ri===7 && <span style={{position:'absolute',bottom:2,right:4,fontSize:10,fontWeight:700,color:(fi+ri)%2===0?boardT.dark:boardT.light,opacity:.7,pointerEvents:'none'}}>{f}</span>}
-              {possibleMoves.includes(sq) && !p && <div style={{width:'26%',height:'26%',borderRadius:'50%',background:'rgba(0,0,0,.2)'}}/>}
-              {possibleMoves.includes(sq) && p && <div style={{width:'85%',height:'85%',borderRadius:'50%',border:'4px solid rgba(0,0,0,.25)'}}/>}
-              {p && <span style={{fontSize:36,lineHeight:1,userSelect:'none',textShadow:'1px 2px 3px rgba(0,0,0,.3)',color:p.color==='w'?'#fff':'#111'}}>{getPieceSymbol(p)}</span>}
+            const sq=f+r; 
+            const p=chess.get(sq as any); 
+            const extTheme = (EXTENDED_BOARD_THEMES as any)[profile.boardTheme] || { light: '#f0d9b5', dark: '#b58863' };
+            const pieceStyle = (PIECE_STYLES as any)[profile.pieceSize || 'LARGE'] || (PIECE_STYLES as any).LARGE;
+            const bg=(fi+ri)%2===0 ? extTheme.light : extTheme.dark
+            return <div key={sq} onClick={()=>click(sq)} style={{aspectRatio:1,background:bg,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',position:'relative',border:selected===sq?'3px solid var(--accent)':'none',transition:'all 0.2s'}}>
+              {fi===0 && <span style={{position:'absolute',top:2,left:4,fontSize:10,fontWeight:700,color:(fi+ri)%2===0?extTheme.dark:extTheme.light,opacity:.7,pointerEvents:'none'}}>{r}</span>}
+              {ri===7 && <span style={{position:'absolute',bottom:2,right:4,fontSize:10,fontWeight:700,color:(fi+ri)%2===0?extTheme.dark:extTheme.light,opacity:.7,pointerEvents:'none'}}>{f}</span>}
+              {possibleMoves.includes(sq) && !p && <div style={{width:'26%',height:'26%',borderRadius:'50%',background:'rgba(0,0,0,.3)'}}/>}
+              {possibleMoves.includes(sq) && p && <div style={{width:'85%',height:'85%',borderRadius:'50%',border:'4px solid rgba(0,0,0,.4)'}}/>}
+              {p && <span style={{...pieceStyle,lineHeight:1,color:p.color==='w'?'#fff':'#000',filter:p.color==='w'?'drop-shadow(2px 2px 4px rgba(0,0,0,0.8))':'drop-shadow(2px 2px 4px rgba(255,255,255,0.8))'}}>{getPieceSymbol(p)}</span>}
             </div>
           }))}
         </div>

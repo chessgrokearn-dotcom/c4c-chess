@@ -1,17 +1,18 @@
 import { CONFIG_BASE } from './config-base';
 // 🔹 АКТИВНЫЕ ПАТЧИ (только рабочие)
-import { PATCH_024 } from './config-patch-024';
+import { PATCH_026 } from './config-patch-026';
+import type { GameNotification } from './config-patch-026';
 
 // 🔹 КОНСТРУКТОР: Только то, что нужно
 export const CONFIG = {
   ...CONFIG_BASE,
-  ...PATCH_024
+  ...PATCH_026
 };
 
-// 🔹 ЯВНЫЕ ЭКСПОРТЫ (всё из PATCH_023)
+// 🔹 ЯВНЫЕ ЭКСПОРТЫ (всё из PATCH_026)
 export const APP_NAME = CONFIG.APP_NAME;
-export const C4C_TOKEN_ADDRESS = CONFIG.C4C_ADDR;
-export const GAME_CONTRACT_ADDRESS = CONFIG.GAME_ADDR;
+export const C4C_TOKEN_ADDRESS = CONFIG.C4C_TOKEN_ADDRESS;
+export const GAME_CONTRACT_ADDRESS = CONFIG.GAME_CONTRACT_ADDRESS;
 export const CHAIN_ID = CONFIG.CHAIN_ID;
 export const C4C_BUY_URL = CONFIG.C4C_BUY_URL || 'https://www.pink.meme/token/bsc/0xaac20575371de01b4d10c4e7566d5453d72d56e7';
 export const TIME_OPTIONS = CONFIG.TIME_CONTROLS;
@@ -45,14 +46,24 @@ export const C4C_EXCHANGE_URL = CONFIG.C4C_EXCHANGE_URL;
 export const SOCIAL_SECTION_TITLE = CONFIG.SOCIAL_SECTION_TITLE;
 export const SOCIAL_LINKS = CONFIG.SOCIAL_LINKS;
 export const YOUTUBE_SECTION_DESCRIPTION = CONFIG.YOUTUBE_SECTION_DESCRIPTION;
-
+export const EXTENDED_BOARD_THEMES = CONFIG.EXTENDED_BOARD_THEMES;
+export const PIECE_STYLES = CONFIG.PIECE_STYLES;
+export type GameNotification = typeof CONFIG.GameNotification;
+export const createNotification = CONFIG.createNotification;
+export const getNotifications = CONFIG.getNotifications;
+export const markNotificationRead = CONFIG.markNotificationRead;
+export const playStartSound = CONFIG.playStartSound;
+export const showVisualAlert = CONFIG.showVisualAlert;
+export const checkAndStartGame = CONFIG.checkAndStartGame;
+export const updatePlayerPresence = CONFIG.updatePlayerPresence;
+export const areBothPlayersOnline = CONFIG.areBothPlayersOnline;
 // 🔹 КОНТРАКТЫ / ХУКИ
 export const C4C_ABI = CONFIG.C4C_ABI;
 export const GAME_ABI = CONFIG.GAME_ABI;
 export const toContractUnits = CONFIG.toWei;
 export const useApproveC4C = CONFIG.useApproveC4C;
-export const useCreateTokenGame = CONFIG.useCreateGame;
-export const useJoinTokenGame = CONFIG.useJoinGame;
+export const useCreateTokenGame = CONFIG.useCreateTokenGame;
+export const useJoinTokenGame = CONFIG.useJoinTokenGame;
 export const useClaimWinnings = CONFIG.useClaimWinnings;
 export const useGameBalance = CONFIG.useGameBalance;
 
