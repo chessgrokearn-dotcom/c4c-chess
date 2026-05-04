@@ -10,7 +10,8 @@ import {
   FIXED_CSS, injectGlobalStyles,
   VALID_STAKES, VALID_TIMES, validateGameConfig, createTokenGameSession, recordGameMove, getMyActiveGames,
   MIN_STAKE, C4C_DECIMALS, useApproveC4C, useCreateTokenGame, useJoinTokenGame, generateGameInvite, sendInviteToChat, publishGameToLobby, canJoinGame,
-  ALLOWED_STAKES, validateExactStake, calculatePrizePool, formatPrizePool
+  ALLOWED_STAKES, validateExactStake, calculatePrizePool, formatPrizePool,
+  useClaimWinnings, useGameBalance, updateGameBalance
 } from '@/lib/config'
 
 const PIECES: any = { p:{w:'♙',b:'♟'}, n:{w:'♘',b:'♞'}, b:{w:'♗',b:'♝'}, r:{w:'♖',b:'♜'}, q:{w:'♕',b:'♛'}, k:{w:'♔',b:'♚'} }
@@ -30,7 +31,7 @@ export default function Page() {
   const [selected, setSelected] = useState<string|null>(null)
   const [possibleMoves, setPossibleMoves] = useState<string[]>([])
   const [timeCtrl, setTimeCtrl] = useState(900)
-  const [stake, setStake] = useState(10000) // 🔹 Начальная ставка (из списка ALLOWED_STAKES)
+  const [stake, setStake] = useState(5000)
   const [wTime, setWTime] = useState(900)
   const [bTime, setBTime] = useState(900)
   const [over, setOver] = useState<string|null>(null)
@@ -47,6 +48,8 @@ export default function Page() {
   const { approve: approveTokens, isPending: isApproving } = useApproveC4C()
   const { create: createOnChain, txHash: createTxHash, isPending: isCreating, isSuccess: gameCreatedOnChain } = useCreateTokenGame()
   const { join: joinOnChain, txHash: joinTxHash, isPending: isJoining, isSuccess: joinedOnChain } = useJoinTokenGame()
+  const { claim: claimWinnings, isPending: isClaiming, isSuccess: claimed } = useClaimWinnings()
+  const { balance: gameBalance, isLoading: balanceLoading } = useGameBalance(currentGame?.id || null)
 
   useEffect(() => { if (isClient && FIXED_CSS) injectGlobalStyles(FIXED_CSS) }, [isClient])
   useEffect(() => { setIsClient(true)
@@ -86,7 +89,7 @@ export default function Page() {
   const updateProfile = (updates: any) => { const np = { ...profile, ...updates }; setProfile(np); saveProfileToStorage(np) }
   const handleConnect = async (connector: any) => { try { await connect({connector}); setShowModal(false) } catch { resetConnectionStates() } }
 
-  // 🔥 СОЗДАНИЕ ИГРЫ (валидация точных ставок + депозит)
+  // 🔥 СОЗДАНИЕ ИГРЫ
   const handleCreateGame = async () => {
     const check = validateExactStake(stake);
     if (!check.valid) { alert(`❌ ${check.error}`); return; }
@@ -97,13 +100,13 @@ export default function Page() {
 
     try {
       await createOnChain(timeCtrl, stake);
-      if (createTxHash || true) {
-        const game = createTokenGameSession(address, stake, timeCtrl);
-        (game as any).txHash = createTxHash || 'pending';
-        publishGameToLobby(game);
-        alert(`✅ Игра создана!\n🏆 Призовой фонд: ${formatPrizePool(stake)}\n🔗 Ссылка скопирована!`);
-        if (navigator.clipboard) navigator.clipboard.writeText(`${window.location.origin}/?join=${game.id}`);
-      }
+      const game = createTokenGameSession(address, stake, timeCtrl);
+      (game as any).txHash = createTxHash || 'pending';
+      (game as any).balance = stake;
+      publishGameToLobby(game);
+      alert(`✅ Игра создана!\n🏆 Призовой фонд: ${formatPrizePool(stake)}\n🔗 Ссылка скопирована!`);
+      if (navigator.clipboard) navigator.clipboard.writeText(`${window.location.origin}/?join=${game.id}`);
+      setGames(getOnlineGames());
     } catch (e: any) { alert(`❌ Ошибка: ${e.message || 'Не удалось создать игру'}`); }
   };
 
@@ -116,14 +119,30 @@ export default function Page() {
     const confirmed = confirm(`Присоединиться?\n💰 Ставка: ${formatC4C(game.stake)} C4C\n🏆 Фонд: ${formatPrizePool(game.stake)}`);
     if (!confirmed) return;
 
-    try { await joinOnChain(game.id); alert('✅ Вы в игре! Токены списаны.'); } 
-    catch (e: any) { alert(`❌ Ошибка: ${e.message}`); }
+    try { 
+      await joinOnChain(game.id); 
+      updateGameBalance(game.id, game.stake * 2);
+      alert('✅ Вы в игре! Токены списаны.');
+      setGames(getOnlineGames());
+    } catch (e: any) { alert(`❌ Ошибка: ${e.message}`); }
+  };
+
+  // 🔥 ЗАБРАТЬ ВЫИГРЫШ
+  const handleClaimWinnings = async (game: any) => {
+    if (!address) return alert('🔗 Подключите кошелёк');
+    const confirmed = confirm(`🏆 Забрать выигрыш ${formatPrizePool(game.stake)}?\nТокены будут переведены на ваш кошелёк.`);
+    if (!confirmed) return;
+    try {
+      await claimWinnings(game.id);
+      alert('💰 Выигрыш зачислен!');
+      setOver(null); setCurrentGame(null);
+    } catch (e: any) { alert(`❌ Ошибка: ${e.message}`); }
   };
 
   const click = (sq: string) => {
     if (over) return; if (selected === sq) { setSelected(null); setPossibleMoves([]); return }
     const g = new Chess(fen)
-    if (selected) { try { const m = g.move({ from: selected as any, to: sq as any, promotion: 'q' }); if (m) { setFen(g.fen()); setSelected(null); setPossibleMoves([]); if(currentGame) recordGameMove(currentGame.id, m.san, g.pgn()); setMoveHistory([...moveHistory, m.san]); if (g.isCheckmate()) { setOver('⚪ Вы победили!'); processPayout(address||'',stake) } return } } catch {} }
+    if (selected) { try { const m = g.move({ from: selected as any, to: sq as any, promotion: 'q' }); if (m) { setFen(g.fen()); setSelected(null); setPossibleMoves([]); if(currentGame) recordGameMove(currentGame.id, m.san, g.pgn()); setMoveHistory([...moveHistory, m.san]); if (g.isCheckmate()) { setOver('⚪ Вы победили!'); } return } } catch {} }
     const piece = g.get(sq as any); if (piece && piece.color === g.turn()) { setSelected(sq); setPossibleMoves(g.moves({ square: sq as any, verbose: true }).map((m:any)=>m.to)) } else { setSelected(null); setPossibleMoves([]) }
   }
   const reset = () => { setFen(new Chess().fen()); setSelected(null); setPossibleMoves([]); setWTime(timeCtrl); setBTime(timeCtrl); setOver(null); setCurrentGame(null); setMoveHistory([]) }
@@ -165,6 +184,8 @@ export default function Page() {
           <div style={{flex:1}}>
             <input value={profile.name} onChange={(e:any)=>updateProfile({name:e.target.value})} placeholder="Ваше имя" style={{padding:10,fontWeight:600,marginBottom:6}}/>
             <p style={{fontSize:13,opacity:.7}}>{tr('balance')}: <span style={{fontSize:18,fontWeight:'bold',color:'var(--accent)'}}>{formatC4C(balance?.value)} C4C</span></p>
+            {/* 🔥 КНОПКА ПОКУПКИ C4C */}
+            <a href={C4C_BUY_URL} target="_blank" rel="noopener noreferrer" style={{display:'inline-block',marginTop:8,padding:'8px 16px',background:'linear-gradient(135deg,#ec4899,#db2777)',color:'#fff',textDecoration:'none',borderRadius:8,fontSize:13}}>🛒 Купить C4C на Pink.Meme</a>
           </div>
         </div>
         <div style={{display:'flex',flexDirection:'column',gap:10}}>
@@ -201,14 +222,15 @@ export default function Page() {
         </div>
       </div>}
 
-      {/* 🔹 ЛОББИ */}
+      {/* 🔹 ЛОББИ — с балансом игры */}
       {tab==='lobby' && <div style={{background:'var(--card)',padding:20,borderRadius:16}}>
         <h3 style={{marginBottom:12}}>{tr('lobby')}</h3>
         {games.length===0 ? <p style={{opacity:.7}}>{tr('noGames')}</p> : games.map((game:any)=>{
           const prize = formatPrizePool(game.stake);
+          const bal = (game.balance || game.stake).toLocaleString();
           return (<div key={game.id} style={{padding:10,background:'var(--bg)',borderRadius:8,marginBottom:8,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
             <div><p style={{fontWeight:600}}>🎮 {game.id.slice(0,12)}... | 🏆 {prize}</p>
-            <p style={{fontSize:12,opacity:.6}}>{tr('stake')}: {formatC4C(game.stake)} | {tr('time')}: {formatTime(game.timeControl)} | 👤 {game.creator.slice(2,6)}...</p></div>
+            <p style={{fontSize:12,opacity:.6}}>{tr('stake')}: {formatC4C(game.stake)} | {tr('time')}: {formatTime(game.timeControl)} | 👤 {game.creator.slice(2,6)}... | 💰 Баланс: {bal} C4C</p></div>
             <div style={{display:'flex',gap:6}}>
               <button onClick={()=>handleJoinGame(game)} disabled={isJoining} style={{padding:'6px 14px',background:'#3b82f6',color:'#fff',borderRadius:6}}>{isJoining?'⏳...':'▶️ Играть'}</button>
               {game.creator.toLowerCase() === address?.toLowerCase() && (<button onClick={()=>{const inv = generateGameInvite(game.id, profile.name||'Player', game.stake, game.timeControl); if(friends[0]) { sendInviteToChat(friends[0].address, inv); alert(`📩 Отправлено ${friends[0].name}!`); } else if(navigator.clipboard) { navigator.clipboard.writeText(inv.link); alert('🔗 Ссылка скопирована!'); }}} style={{padding:'6px 14px',background:'#10b981',color:'#fff',borderRadius:6}}>📩</button>)}
@@ -224,12 +246,23 @@ export default function Page() {
         {friends.length===0 ? <p style={{opacity:.7}}>{tr('noFriends')}</p> : friends.map((f:any)=>(<div key={f.address} style={{padding:10,background:'var(--bg)',borderRadius:8,marginBottom:6,display:'flex',justifyContent:'space-between',alignItems:'center'}}><span>{f.name}</span><button onClick={()=>alert(`${tr('invite')} ${f.name}`)} style={{padding:'4px 10px',background:'var(--success)',color:'#fff',borderRadius:4,fontSize:12}}>{tr('invite')}</button></div>))}
       </div>}
 
-      {/* 🔹 ДОСКА */}
+      {/* 🔹 ДОСКА + БАЛАНС ИГРЫ */}
       <div style={{marginTop:16,background:'var(--card)',padding:16,borderRadius:16}}>
-        {currentGame && <div style={{marginBottom:12,padding:10,background:'var(--bg)',borderRadius:8}}>
-          <p style={{fontSize:14,fontWeight:600}}>🎮 Игра: {currentGame.id}</p>
-          <p style={{fontSize:12,opacity:.7}}>Ставка: {formatC4C(currentGame.stake)} C4C | 🏆 Фонд: {formatPrizePool(currentGame.stake)} | Время: {formatTime(currentGame.timeControl)}</p>
-        </div>}
+        {currentGame && (
+          <div style={{marginBottom:12,padding:10,background:'var(--bg)',borderRadius:8}}>
+            <p style={{fontSize:14,fontWeight:600}}>🎮 Игра: {currentGame.id}</p>
+            <p style={{fontSize:12,opacity:.7}}>
+              Ставка: {formatC4C(currentGame.stake)} C4C | 
+              🏆 Баланс игры: {(gameBalance || (currentGame as any).balance || 0).toLocaleString()} C4C | 
+              Время: {formatTime(currentGame.timeControl)}
+            </p>
+            {over && (
+              <button onClick={()=>handleClaimWinnings(currentGame)} disabled={isClaiming} style={{marginTop:8,padding:'6px 16px',background:'var(--success)',color:'#fff',borderRadius:6}}>
+                {isClaiming ? '⏳...' : '🏆 Забрать выигрыш'}
+              </button>
+            )}
+          </div>
+        )}
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
           <h3>{tr('board')}</h3>
           <div style={{display:'flex',gap:8}}><select value={timeCtrl} onChange={(e:any)=>setTimeCtrl(Number(e.target.value))} style={{padding:6,borderRadius:6}}>{TIME_OPTIONS.map((o:any)=><option key={o.value} value={o.value}>{o.label}</option>)}</select></div>
