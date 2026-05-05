@@ -107,7 +107,7 @@ export default function ChessApp() {
     return () => clearInterval(heartbeat)
   }, [address, isConnected])
   
-  // 🔹 Проверка старта игр каждые 30 сек
+  // 🔹 Проверка старта игр каждые 5 сек: оба игрока должны быть онлайн
   useEffect(() => {
     if (!address || !isConnected) return
     
@@ -116,50 +116,41 @@ export default function ChessApp() {
         if (game.players?.length === 2 && game.status === 'starting') {
           const canStart = await checkAndStartGame(game.id)
           if (canStart) {
-            // Определяем цвета
             const presence = JSON.parse(localStorage.getItem('c4c_presence') || '{}')
             const now = Date.now()
-            const p1 = presence[game.players[0]] || 0
-            const p2 = presence[game.players[1]] || 0
+            const p1 = presence[game.players[0]?.toLowerCase()] || 0
+            const p2 = presence[game.players[1]?.toLowerCase()] || 0
+            const opponent = game.players.find((p: string) => p.toLowerCase() !== address?.toLowerCase()) || ''
             
             let myColor: 'w' | 'b' = 'w'
             if (Math.abs(p1 - p2) < 2000) {
-              // Оба онлайн одновременно — случайный выбор
               myColor = Math.random() < 0.5 ? 'w' : 'b'
             } else {
-              // Первый онлайн получает белые
-              myColor = (p1 < p2) ? 'w' : 'b'
+              myColor = p1 < p2 ? 'w' : 'b'
             }
             
-            // Создаём уведомление о старте
             createNotification({
               id: `start_${game.id}`,
               type: 'game_started',
               title: '🎮 Игра началась!',
-              message: `Вы играете ${myColor === 'w' ? '⚪ Белыми' : '⚫ Чёрными'} против ${game.players.find((p: string) => p !== address)?.slice(0,6)}...`,
+              message: `Вы играете ${myColor === 'w' ? '⚪ Белыми' : '⚫ Чёрными'} против ${opponent.slice(0,6)}...`,
               gameId: game.id,
+              opponentName: opponent,
+              myColor,
               read: false,
               createdAt: Date.now()
             })
             
-            // Воспроизводим звук
             playStartSound()
+            showVisualAlert(game.id, myColor, opponent.slice(0,6))
             
-            // Показываем визуальное оповещение
-            showVisualAlert(game.id, myColor, game.players.find((p: string) => p !== address)?.slice(0,6) + '...')
-            
-            // Обновляем статус игры
-            setGames(prev => prev.map(g => 
-              g.id === game.id ? {...g, status: 'active', myColor} : g
-            ))
-            
-            // Переходим к доске
-            setCurrentGame({...game, status: 'active', myColor})
+            setGames(prev => prev.map(g => g.id === game.id ? { ...g, status: 'active', myColor } : g))
+            setCurrentGame({ ...game, status: 'active', myColor })
             setTab('board')
           }
         }
       })
-    }, 30000)
+    }, 5000)
     
     return () => clearInterval(checkGames)
   }, [address, isConnected, games])
@@ -385,17 +376,16 @@ export default function ChessApp() {
         {/* Раздел создания игры */}
         {tab === 'create' && (
           <div style={{background:'var(--card)', padding:20, borderRadius:16}}>
-            <h3 style={{marginBottom:12}}>🎯 Создать игру на токены C4C</h3>
+            <h3 style={{marginBottom:12}}>🎮 Создать игру на токены C4C</h3>
             <p style={{opacity:0.7, marginBottom:16}}>
-              Выберите время и ставку, внесите токены в баланс игры. Игра опубликуется в лобби и начнётся через 15 минут после присоединения второго игрока.
+              Выберите время и ставку, подтвердите approve + createGame, и опубликуйте игру в лобби.
             </p>
             
-            {/* Выбор времени */}
             <div style={{marginBottom:16}}>
               <label style={{display:'block', marginBottom:8, fontWeight:600}}>⏱️ Время на игру:</label>
               <select 
                 value={timeCtrl} 
-                onChange={(e:any) => setTimeCtrl(Number(e.target.value))}
+                onChange={(e:any) => setTimeCtrl(Number(e.target.value))} 
                 style={{width:'100%', padding:10, borderRadius:8, background:'var(--bg)', color:'var(--text)', border:'1px solid var(--border)'}}
               >
                 {TIME_OPTIONS.map((opt:any) => (
@@ -404,12 +394,11 @@ export default function ChessApp() {
               </select>
             </div>
             
-            {/* Выбор ставки */}
             <div style={{marginBottom:16}}>
               <label style={{display:'block', marginBottom:8, fontWeight:600}}>💰 Ставка (C4C):</label>
               <select 
                 value={stake} 
-                onChange={(e:any) => setStake(Number(e.target.value))}
+                onChange={(e:any) => setStake(Number(e.target.value))} 
                 style={{width:'100%', padding:10, borderRadius:8, background:'var(--bg)', color:'var(--text)', border:'1px solid var(--border)'}}
               >
                 {STAKE_OPTIONS.map((opt:any) => (
@@ -420,18 +409,28 @@ export default function ChessApp() {
                 🏆 Призовой фонд: {formatPrizePool(stake)} | 💰 Ваш баланс: {balance ? formatC4C(balance.value) : 'Загрузка...'}
               </p>
             </div>
+
+            <details style={{background:'var(--bg)', padding:12, borderRadius:10, border:'1px solid var(--border)', marginBottom:16}}>
+              <summary style={{fontWeight:700, cursor:'pointer'}}>📖 Как создать и присоединиться к игре</summary>
+              <ol style={{paddingLeft:18, marginTop:10, lineHeight:1.7, fontSize:14}}>
+                <li>Подключить кошелёк → выбрать время и ставку → подтвердить approve и createGame.</li>
+                <li>Игра появится в лобби в статусе ожидания → дождаться соперника или пригласить друга.</li>
+                <li>Игра начнётся только когда оба игрока онлайн → будет звук, всплывающее окно и переход к доске.</li>
+                <li>Первый онлайн получает ⚪️ белые; оба онлайн одновременно → цвета назначаются случайно.</li>
+                <li>Победа по времени/мату → выигрыш; ничья → возврат ставок.</li>
+              </ol>
+            </details>
             
-            {/* Кнопка создания */}
             <button 
               onClick={async () => {
-                if (!address) return alert('Подключите кошелёк!')
-                if (!validateStake(stake)) return alert('Неверная ставка!')
+                if (!address) return alert('🔗 Подключите кошелёк!')
+                if (!validateStake(stake)) return alert('❌ Выберите ставку из списка!')
                 
-                if (!confirm(`🎮 Создать игру на токены?\n💰 Ставка: ${formatC4C(stake)} C4C\n🏆 Фонд: ${formatPrizePool(stake)}\n⚠️ Токены спишутся с вашего кошелька в баланс игры.`)) return;
+                if (!confirm(`🎮 Создать игру на токены?\n💰 Ставка: ${stake.toLocaleString()} C4C\n🏆 Фонд: ${formatPrizePool(stake)}\n⚠️ Токены спишутся с вашего кошелька в баланс игры.`)) return;
                 
                 try {
-                  const gameId = `game_${Date.now()}_${Math.random().toString(36).slice(2,9)}`;
-                  const invite = generateGameInvite(gameId, `Игра ${gameId.slice(-8)}`, stake, timeCtrl);
+                  const gameId = `0x${Array.from({ length: 32 }, () => Math.floor(Math.random() * 256).toString(16).padStart(2, '0')).join('')}` as `0x${string}`
+                  const invite = generateGameInvite(gameId, profile.name || `Игрок`, stake, timeCtrl)
                   const gameData = {
                     id: gameId,
                     creator: address,
@@ -442,35 +441,36 @@ export default function ChessApp() {
                     createdAt: Date.now(),
                     players: [address],
                     startAt: 0
-                  };
+                  }
 
-                  publishGameToLobby(gameData);
-                  setGames(prev => [...prev, gameData]);
-                  setNotifications(getNotifications(notificationFilter));
+                  if (!isApproving) {
+                    await approve(stake)
+                  }
+                  if (!isCreating) {
+                    await createTokenGame(timeCtrl, stake)
+                  }
 
+                  publishGameToLobby(gameData)
+                  setGames(getLobbyGames())
                   createNotification({
                     type: 'game_created',
-                    title: '🎮 Игра создана!',
-                    message: `Ожидаем второго игрока. Ссылка: ${invite.link}`,
+                    title: '🎮 Игра создана',
+                    message: `Игра опубликована в лобби. Ссылка: ${invite.link}`,
                     gameId,
                     read: false,
                     createdAt: Date.now()
-                  });
-                  setNotifications(getNotifications(notificationFilter));
+                  })
+                  setNotifications(getNotifications(notificationFilter))
 
-                  if (!isApproving) {
-                    await approve(stake);
-                  }
-                  if (!isCreating) {
-                    await createTokenGame(timeCtrl, stake);
+                  if (navigator.clipboard) {
+                    await navigator.clipboard.writeText(invite.text)
                   }
 
-                  alert('✅ Игра создана! Игра опубликована в лобби.');
-                  setTab('lobby');
-                  
+                  alert('✅ Игра создана и приглашение скопировано в буфер обмена!')
+                  setTab('lobby')
                 } catch (error) {
-                  console.error('Ошибка создания игры:', error);
-                  alert('❌ Ошибка создания игры');
+                  console.error('Ошибка создания игры:', error)
+                  alert('❌ Ошибка создания игры')
                 }
               }}
               disabled={!balance || balance.value < BigInt(stake) || isApproving || isCreating}
@@ -488,11 +488,6 @@ export default function ChessApp() {
             >
               🎮 Создать игру на токены
             </button>
-            
-            {/* Ссылка на покупку токенов */}
-            <p style={{textAlign:'center', fontSize:12, opacity:0.6}}>
-              Недостаточно C4C? <a href={C4C_BUY_URL} target="_blank" style={{color:'var(--accent)'}}>Купить токены</a>
-            </p>
           </div>
         )}
         
@@ -514,58 +509,101 @@ export default function ChessApp() {
                         👤 {g.creator === address ? 'Вы создали' : `Создатель: ${g.creator?.slice(0,6)}...${g.creator?.slice(-4)}`}
                       </p>
                     </div>
-                    <div style={{display:'flex', flexDirection:'column', gap:4}}>
-                      {g.creator !== address && (
-                        <button 
-                          onClick={() => {
-                            const invite = generateGameInvite(g.id, `Игра ${g.id.slice(-8)}`, g.stake, g.timeCtrl);
-                            navigator.clipboard.writeText(invite.link);
-                            alert('📋 Ссылка скопирована!');
+                    <div style={{display:'flex', flexDirection:'column', gap:8}}>
+                      {g.creator === address ? (
+                        <button
+                          onClick={async () => {
+                            const invite = generateGameInvite(g.id, profile.name || 'Игрок', g.stake, g.timeCtrl)
+                            if (navigator.clipboard) {
+                              await navigator.clipboard.writeText(invite.text)
+                            }
+                            if (friends.length > 0) {
+                              const friendList = friends.map((f:any) => `${f.name} (${f.address})`).join('\n')
+                              const friendAddress = window.prompt(`Отправить приглашение другу. Список друзей:\n${friendList}`, friends[0].address)
+                              if (friendAddress) {
+                                sendInviteToChat(friendAddress, invite)
+                                alert('📩 Приглашение отправлено в чат и скопировано в буфер обмена!')
+                                return
+                              }
+                            }
+                            alert('📩 Приглашение скопировано в буфер обмена!')
                           }}
-                          style={{padding:'4px 8px', background:'#3b82f6', color:'#fff', borderRadius:6, border:'none', cursor:'pointer', fontSize:11}}
+                          style={{padding:'8px 12px', background:'#10b981', color:'#fff', borderRadius:6, border:'none', cursor:'pointer', fontSize:12}}
                         >
-                          📩
+                          📩 Пригласить
                         </button>
-                      )}
+                      ) : null}
                       <button 
                         onClick={async () => {
-                          if (g.creator === address) return alert('Это ваша игра!');
+                          if (!address) return alert('🔗 Подключите кошелёк')
+                          if (g.creator === address) return alert('Это ваша игра!')
+                          if (!canJoinGame(g, address)) return alert('❌ Нельзя присоединиться')
                           
-                          if (!confirm(`▶️ Присоединиться к игре?\n💰 Ставка: ${formatC4C(g.stake)} C4C\n🏆 Фонд: ${formatPrizePool(g.stake)}`)) return;
+                          if (!confirm(`▶️ Присоединиться к игре?\n💰 Ставка: ${g.stake.toLocaleString()} C4C\n🏆 Фонд: ${formatPrizePool(g.stake)}`)) return;
                           
                           try {
                             const updatedGame = {
                               ...g,
                               players: [...(g.players || []), address],
                               status: 'starting',
-                              startAt: Date.now() + 15 * 60 * 1000
-                            };
+                              balance: (g.balance || 0) + g.stake,
+                              startAt: Date.now()
+                            }
 
-                            publishGameToLobby(updatedGame);
-                            setGames(prev => prev.map(game => game.id === g.id ? updatedGame : game));
-                            setNotifications(getNotifications(notificationFilter));
+                            publishGameToLobby(updatedGame)
+                            setGames(getLobbyGames())
+                            setNotifications(getNotifications(notificationFilter))
 
                             createNotification({
                               type: 'game_joined',
-                              title: '🎮 Игрок присоединился!',
-                              message: `Игра стартует через 15 минут. Соперник: ${g.creator?.slice(0,6)}...`,
+                              title: '🎮 Игрок присоединился',
+                              message: `Игра начнётся, когда оба игрока будут онлайн. Соперник: ${g.creator?.slice(0,6)}...`,
                               gameId: g.id,
                               read: false,
                               createdAt: Date.now()
-                            });
-                            setNotifications(getNotifications(notificationFilter));
+                            })
+                            setNotifications(getNotifications(notificationFilter))
 
                             if (!isApproving) {
-                              await approve(g.stake);
+                              await approve(g.stake)
                             }
                             if (!isJoining) {
-                              await joinTokenGame(g.id);
+                              await joinTokenGame(g.id)
                             }
 
-                            alert('✅ Вы присоединились! Игра будет запущена через 15 минут.');
+                            const started = await checkAndStartGame(updatedGame.id)
+                            if (started) {
+                              const opponent = updatedGame.players.find((p:any) => p.toLowerCase() !== address?.toLowerCase()) || ''
+                              const presence = JSON.parse(localStorage.getItem('c4c_presence') || '{}')
+                              const p1 = presence[updatedGame.players[0]?.toLowerCase()] || 0
+                              const p2 = presence[updatedGame.players[1]?.toLowerCase()] || 0
+                              let myColor: 'w' | 'b' = 'w'
+                              if (Math.abs(p1 - p2) < 2000) {
+                                myColor = Math.random() < 0.5 ? 'w' : 'b'
+                              } else {
+                                myColor = p1 < p2 ? 'w' : 'b'
+                              }
+                              createNotification({
+                                id: `start_${updatedGame.id}`,
+                                type: 'game_started',
+                                title: '🎮 Игра началась!',
+                                message: `Вы играете ${myColor === 'w' ? '⚪ Белыми' : '⚫ Чёрными'} против ${opponent.slice(0,6)}...`,
+                                gameId: updatedGame.id,
+                                opponentName: opponent,
+                                myColor,
+                                read: false,
+                                createdAt: Date.now()
+                              })
+                              playStartSound()
+                              showVisualAlert(updatedGame.id, myColor, opponent.slice(0,6))
+                              setCurrentGame({ ...updatedGame, status: 'active', myColor })
+                              setTab('board')
+                            }
+
+                            alert('✅ Вы присоединились! Игра запустится, когда оба игрока онлайн.')
                           } catch (error) {
-                            console.error('Ошибка присоединения:', error);
-                            alert('❌ Ошибка присоединения к игре');
+                            console.error('Ошибка присоединения:', error)
+                            alert('❌ Ошибка присоединения к игре')
                           }
                         }}
                         style={{padding:'6px 12px', background:'var(--success)', color:'#fff', borderRadius:6, border:'none', cursor:'pointer', fontSize:12}}

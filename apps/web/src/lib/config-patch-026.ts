@@ -756,8 +756,7 @@ export function showVisualAlert(gameId: string, myColor: 'w' | 'b', opponentName
   const message = `Игра ${gameId.slice(0, 8)}... началась!\nВы играете ${colorText} против ${opponentName}\n\nПерейти к доске?`;
 
   if (confirm(message)) {
-    // Переход к игре (можно добавить логику навигации)
-    window.location.hash = `#game-${gameId}`;
+    window.location.href = `${window.location.origin}/game/${gameId}`;
   }
 }
 
@@ -830,6 +829,7 @@ export const PATCH_026 = {
   checkAndStartGame,
   updatePlayerPresence,
   areBothPlayersOnline,
+  canJoinGame,
   getFriends,
   addFriend,
   processPayout,
