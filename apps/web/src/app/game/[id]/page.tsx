@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Chess } from 'chess.js'
 import { createNotification, formatC4C, formatPrizePool, formatTime, getLobbyGames } from '@/lib/config'
@@ -62,11 +62,24 @@ export default function GamePage() {
   const [over, setOver] = useState<string | null>(null)
   const [clock, setClock] = useState<ChessClock | null>(null)
   const [statusLabel, setStatusLabel] = useState('Ожидание ходов...')
+  const boardRef = useRef<HTMLDivElement>(null)
+  const boardInstance = useRef<any>(null)
 
   const timeControl = useMemo(() => {
     if (!game) return 900
     return game.timeCtrl || game.timeControl || 900
   }, [game])
+
+  useEffect(() => {
+    // Add chessboard CSS
+    const link = document.createElement('link')
+    link.rel = 'stylesheet'
+    link.href = 'https://chessboardjs.com/css/chessboard-1.0.0.min.css'
+    document.head.appendChild(link)
+    return () => {
+      document.head.removeChild(link)
+    }
+  }, [])
 
   useEffect(() => {
     if (!gameId) return
@@ -85,71 +98,59 @@ export default function GamePage() {
         finished: false
       })
       setStatusLabel(found.status === 'active' ? 'Игра началась' : 'Ожидается соперник')
+
+      // Initialize chessboard
+      if (boardRef.current && typeof window !== 'undefined') {
+        import('chessboardjs').then((Chessboard) => {
+          boardInstance.current = Chessboard.default(boardRef.current as HTMLElement, {
+            position: board.fen(),
+            draggable: true,
+            dropOffBoard: 'snapback',
+            sparePieces: false,
+            onDrop: (source: string, target: string) => {
+              const move = board.move({ from: source, to: target, promotion: 'q' })
+              if (move) {
+                setFen(board.fen())
+                setMoveHistory((prev) => [...prev, move.san])
+                setStatusLabel(board.isCheckmate() ? 'Мат!' : board.isCheck() ? 'Шах!' : 'Ход сделан')
+                setClock((prev) => {
+                  if (!prev) return prev
+                  return {
+                    ...prev,
+                    turn: prev.turn === 'w' ? 'b' : 'w',
+                    running: true
+                  }
+                })
+                if (board.isCheckmate()) {
+                  setOver(`🏆 Мат! Победа ${move.color === 'w' ? 'Белых' : 'Чёрных'}`)
+                } else if (board.isDraw()) {
+                  setOver('♟️ Ничья')
+                }
+                boardInstance.current.position(board.fen())
+                return 'snapback'
+              } else {
+                return 'snapback'
+              }
+            }
+          })
+        })
+      }
     }
   }, [gameId])
 
   useEffect(() => {
-    if (!clock || !clock.running || clock.finished) return
-    const timer = window.setInterval(() => {
-      setClock((prev) => {
-        if (!prev) return prev
-        const next = { ...prev }
-        if (next.turn === 'w') next.white = Math.max(0, next.white - 1)
-        else next.black = Math.max(0, next.black - 1)
-        if (next.white === 0 || next.black === 0) {
-          next.finished = true
-          next.running = false
-          const winner = next.white === 0 ? 'Чёрные' : 'Белые'
-          setOver(`⏱️ Время вышло! Победили ${winner}`)
-          createNotification({
-            type: 'timeout_win',
-            title: '⏱️ Победа по времени',
-            message: `Победитель: ${winner}. Заберите выигрыш на странице лобби.`,
-            gameId: gameId || '',
-            read: false,
-            createdAt: Date.now()
-          })
-        }
-        return next
-      })
-    }, 1000)
-    return () => window.clearInterval(timer)
-  }, [clock, gameId])
+    // Add chessboard CSS
+    const link = document.createElement('link')
+    link.rel = 'stylesheet'
+    link.href = 'https://chessboardjs.com/css/chessboard-1.0.0.min.css'
+    document.head.appendChild(link)
+    return () => {
+      document.head.removeChild(link)
+    }
+  }, [])
 
   const movePiece = (square: string) => {
-    if (!chess || over) return
-    if (selected) {
-      const move = chess.move({ from: selected, to: square, promotion: 'q' })
-      if (move) {
-        setFen(chess.fen())
-        setMoveHistory((prev) => [...prev, move.san])
-        setSelected(null)
-        setPossibleMoves([])
-        setStatusLabel(chess.isCheckmate() ? 'Мат!' : chess.isCheck() ? 'Шах!' : 'Ход сделан')
-        setClock((prev) => {
-          if (!prev) return prev
-          return {
-            ...prev,
-            turn: prev.turn === 'w' ? 'b' : 'w',
-            running: true
-          }
-        })
-        if (chess.isCheckmate()) {
-          setOver(`🏆 Мат! Победа ${move.color === 'w' ? 'Белых' : 'Чёрных'}`)
-        } else if (chess.isDraw()) {
-          setOver('♟️ Ничья')
-        }
-        return
-      }
-    }
-    const piece = chess.get(square as any)
-    if (piece && piece.color === chess.turn()) {
-      setSelected(square)
-      setPossibleMoves((chess.moves({ square: square as any, verbose: true }) as any[]).map((move: any) => move.to))
-    } else {
-      setSelected(null)
-      setPossibleMoves([])
-    }
+    // Removed: now using chessboard onDrop
   }
 
   const restartGame = () => {
@@ -162,6 +163,9 @@ export default function GamePage() {
     setOver(null)
     setStatusLabel('Игра перезапущена')
     setClock({ white: timeControl, black: timeControl, turn: 'w', running: false, finished: false })
+    if (boardInstance.current) {
+      boardInstance.current.position(chess.fen())
+    }
   }
 
   if (!game) {
@@ -209,36 +213,7 @@ export default function GamePage() {
 
         <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 0.6fr', gap: 20, alignItems: 'start' }}>
           <div style={{ background: 'var(--card)', padding: 20, borderRadius: 16 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, minmax(0, 1fr))', gap: 1, borderRadius: 12, overflow: 'hidden', background: '#111' }}>
-              {['8', '7', '6', '5', '4', '3', '2', '1'].map((rank, rankIndex) =>
-                ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].map((file, fileIndex) => {
-                  const square = `${file}${rank}`
-                  const piece = chess?.get(square as any)
-                  const isActive = selected === square
-                  const isMove = possibleMoves.includes(square)
-                  const background = (rankIndex + fileIndex) % 2 === 0 ? '#f0d9b5' : '#b58863'
-                  return (
-                    <button
-                      key={square}
-                      onClick={() => movePiece(square)}
-                      style={{
-                        width: '100%',
-                        aspectRatio: '1 / 1',
-                        background: isActive ? '#f59e0b' : isMove ? '#34d399' : background,
-                        border: 'none',
-                        cursor: over ? 'default' : 'pointer',
-                        color: piece?.color === 'w' ? '#111' : '#fff',
-                        fontSize: 36,
-                        display: 'grid',
-                        placeContent: 'center'
-                      }}
-                    >
-                      {getPieceSymbol(piece)}
-                    </button>
-                  )
-                })
-              )}
-            </div>
+            <div ref={boardRef} style={{ width: '100%', maxWidth: 400, margin: '0 auto' }}></div>
             <div style={{ marginTop: 18, display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
               <button onClick={restartGame} style={{ padding: '12px 14px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 10, cursor: 'pointer' }}>🔄 Перезапустить</button>
               <button onClick={() => router.push('/')} style={{ padding: '12px 14px', background: '#6b7280', color: '#fff', border: 'none', borderRadius: 10, cursor: 'pointer' }}>← Вернуться в лобби</button>

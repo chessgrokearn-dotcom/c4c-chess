@@ -12,7 +12,9 @@ export const UI_THEMES = {
   blue: { name: '🌊 Синий', bg: '#0d1b2a', text: '#e0e7ff', accent: '#3b82f6', card: '#1b263b' },
   sepia: { name: '📜 Сепия', bg: '#f4ecd8', text: '#3e2723', accent: '#8d6e63', card: '#fff8e1' },
   monochrome: { name: '⚫ Монохром', bg: '#121212', text: '#ffffff', accent: '#9e9e9e', card: '#1e1e1e' },
-  tournament: { name: '🏆 Турнир', bg: '#212121', text: '#eeeeee', accent: '#ff9800', card: '#303030' }
+  tournament: { name: '🏆 Турнир', bg: '#212121', text: '#eeeeee', accent: '#ff9800', card: '#303030' },
+  royal: { name: '👑 Королевская', bg: '#1a1a2e', text: '#e0e7ff', accent: '#ffd700', card: '#16213e' },
+  elegant: { name: '💎 Элегантная', bg: '#2d1b69', text: '#f8f9fa', accent: '#e91e63', card: '#3e2c41' }
 } as const;
 
 export const UI_LANGS = {

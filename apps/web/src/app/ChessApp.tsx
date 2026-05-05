@@ -363,7 +363,9 @@ export default function ChessApp() {
                   onChange={(e:any) => setStake(Number(e.target.value))} 
                   style={{width:'100%', padding:8, marginTop:4, borderRadius:6, background:'var(--bg)', border:'1px solid var(--border)', color:'var(--text)'}}
                 >
-                  {(STAKE_OPTIONS as readonly number[]).map((val:any) => <option key={val} value={val}>{val.toLocaleString()} C4C</option>)}
+                  {STAKE_OPTIONS.map((opt:any) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -401,9 +403,7 @@ export default function ChessApp() {
                 onChange={(e:any) => setStake(Number(e.target.value))} 
                 style={{width:'100%', padding:10, borderRadius:8, background:'var(--bg)', color:'var(--text)', border:'1px solid var(--border)'}}
               >
-                {STAKE_OPTIONS.map((opt:any) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
+                  {(STAKE_OPTIONS as readonly number[]).map((val:any) => <option key={val} value={val}>{val.toLocaleString()} C4C</option>)}
               </select>
               <p style={{fontSize:12, opacity:0.6, marginTop:4}}>
                 🏆 Призовой фонд: {formatPrizePool(stake)} | 💰 Ваш баланс: {balance ? formatC4C(balance.value) : 'Загрузка...'}
