@@ -1,8 +1,8 @@
 // 🔹 ПАТЧ 027: Исправление форматирования баланса C4C с разделителями тысяч и ставки
 export function formatC4CFixed(a: any): string {
   if (!a) return '0.00';
-  // C4C имеет 12 decimals. Делим на 10^12
-  const decimals = 12;
+  // C4C имеет 6 decimals для корректного отображения
+  const decimals = 6;
   const value = typeof a === 'bigint' ? a : BigInt(a.toString());
   const factor = 10n ** BigInt(decimals);
   const whole = value / factor;
