@@ -56,6 +56,12 @@ export default function ChessApp() {
   const [friends, setFriends] = useState<any[]>([])
   const [newFriendAddr, setNewFriendAddr] = useState('')
   const [clock, setClock] = useState<any>(null)
+  const [createGameTxHash, setCreateGameTxHash] = useState<`0x${string}` | null>(null)
+  const {  receipt: createGameReceipt, isLoading: isCreateGameConfirming } = useWaitForTransactionReceipt({
+    hash: createGameTxHash || undefined,
+    chainId: 56,
+    query: { enabled: # 🔹 Найди место после объявления хуков и добавь state для отслеживания txcreateGameTxHash }
+  })
   const [notifications, setNotifications] = useState<GameNotification[]>([])
   const [notificationFilter, setNotificationFilter] = useState<'all' | 'unread'>('all')
 
@@ -739,5 +745,47 @@ export default function ChessApp() {
       </div>
     </div>
   )
-}
+  const handleCreateGame = async () => {
+    if (!validateStake(stake)) return alert('❌ Выбери ставку из списка')
+    if (!address) return alert('🔗 Подключи кошелёк')
+    
+    const stakeWei = BigInt(Math.floor(stake * 1_000_000))
+    
+    try {
+      // 🔹 ШАГ 1: Approve
+      const approveHash = writeApprove({
+        address: '0xaac20575371de01b4d10c4e7566d5453d72d56e7' as `0x${string}`,
+        abi: ['function approve(address,uint256)external returns(bool)'] as const,
+        functionName: 'approve',
+        args: ['0xCf5E5d01ADd5e2Ba62B2f6747E5CFC43e36D5005' as `0x${string}`, stakeWei],
+        chainId: 56
+      })
+      if (!approveHash) throw new Error('approve failed')
+      alert('✅ Approve отправлен')
+      
+      // 🔹 ШАГ 2: CreateGame — сохраняем хэш для отслеживания
+      const createHash = writeCreate({
+        address: '0xCf5E5d01ADd5e2Ba62B2f6747E5CFC43e36D5005' as `0x${string}`,
+        abi: ['function createGame(uint256,uint256)external'] as const,
+        functionName: 'createGame',
+        args: [BigInt(timeCtrl), stakeWei],
+        chainId: 56
+      })
+      if (!createHash) throw new Error('createGame failed')
+      
+      // 🔹 ШАГ 3: Сохраняем хэш — useWaitForTransactionReceipt автоматически начнёт следить
+      setCreateGameTxHash(createHash)
+      alert('⏳ Жду подтверждения транзакции в блокчейне...')
+      
+      // 🔹 ШАГ 4: Публикация в лобби — ТОЛЬКО после подтверждения!
+      // Это будет выполнено в useEffect ниже, когда receipt.status === 'success'
+      
+    } catch (err: any) {
+      console.error('CreateGame Error:', err)
+      alert(`❌ ${err.message || 'Ошибка'}`)
+    }
+  }
+
+
+
   const handleCreateGame = async () => { alert('🚧 Создай игру позже') }
