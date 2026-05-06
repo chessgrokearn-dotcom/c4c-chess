@@ -248,7 +248,7 @@ export default function ChessApp() {
   }
   
   // 🔹 Основной интерфейс (после подключения)
-  const balanceDisplay = balanceLoading ? '⏳' : formatC4C(balance?.value)
+  const balanceDisplay = balanceLoading ? '⏳' : balance?.formatted || "0.00"
   
   return (
     <div style={{minHeight:'100vh', background:'var(--bg)', color:'var(--text)', padding:20}}>
