@@ -753,6 +753,12 @@ export default function ChessApp() {
     } catch (e: any) { alert('❌ ' + (e.message || 'Ошибка')) }
   }
 
+      const g = { id: `g_${Date.now()}`, creator: address, stake, timeCtrl, status: 'waiting', balance: stake }
+      publishGameToLobby(g); setCurrentGame(g); setClock(initClock(timeCtrl)); setGames(getLobbyGames())
+      alert('✅ Игра создана!')
+    } catch (e: any) { alert('❌ ' + (e.message || 'Ошибка')) }
+  }
+
       const approveHash = writeApprove({
         address: '0xaac20575371de01b4d10c4e7566d5453d72d56e7' as `0x${string}`,
         abi: ['function approve(address spender, uint256 amount) external returns (bool)'] as const,
@@ -779,7 +785,7 @@ export default function ChessApp() {
         setGames(getLobbyGames())
         alert('✅ Игра создана!')
       }
-    } catch (err: any) {
+} catch (err: any) {
       console.error('CreateGame Error:', err)
       alert(`❌ Ошибка: ${err.message || 'Транзакция отменена'}`)
     }
@@ -810,7 +816,7 @@ export default function ChessApp() {
         setGames(getLobbyGames());
         alert('✅ Игра создана!');
       }
-    } catch (err: any) {
+} catch (err: any) {
       console.error('CreateGame Error:', err);
       alert(`❌ Ошибка: ${err.message || 'Транзакция отменена'}`);
     }
