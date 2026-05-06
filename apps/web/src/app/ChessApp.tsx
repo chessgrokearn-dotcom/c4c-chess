@@ -17,7 +17,7 @@ import {
 } from '@/lib/config'
 import type { GameNotification } from '@/lib/config'
 
-// 🔹 Константы для баланса
+
 const C4C_TOKEN = '0xaac20575371de01b4d10c4e7566d5453d72d56e7' as `0x${string}`
 const CHAIN_ID = 56
 
@@ -30,7 +30,7 @@ export default function ChessApp() {
   const { disconnect } = useDisconnect()
   const connectors = useConnectors()
   
-  // 🔹 Баланс токенов — вызываем ТОЛЬКО если есть адрес и правильная сеть
+  
   const { data: balance, isLoading: balanceLoading, refetch: refetchBalance } = useBalance({
     address: address,
     token: C4C_TOKEN,
@@ -57,10 +57,10 @@ export default function ChessApp() {
   const [newFriendAddr, setNewFriendAddr] = useState('')
   const [clock, setClock] = useState<any>(null)
   const [createGameTxHash, setCreateGameTxHash] = useState<`0x${string}` | null>(null)
-  const {  receipt: createGameReceipt, isLoading: isCreateGameConfirming } = useWaitForTransactionReceipt({
+  const {  receipt: createGameReceipt, isLoading: isCreateGameConfirming } =   const { data: createGameReceipt, isLoading: isCreateGameConfirming } = useWaitForTransactionReceipt({
     hash: createGameTxHash || undefined,
     chainId: 56,
-    query: { enabled: # 🔹 Найди место после объявления хуков и добавь state для отслеживания txcreateGameTxHash }
+    query: { enabled: !!createGameTxHash }
   })
   const [notifications, setNotifications] = useState<GameNotification[]>([])
   const [notificationFilter, setNotificationFilter] = useState<'all' | 'unread'>('all')
@@ -69,7 +69,7 @@ export default function ChessApp() {
   const { create: createTokenGame, isPending: isCreating } = useCreateTokenGame()
   const { join: joinTokenGame, isPending: isJoining } = useJoinTokenGame()
   
-  // 🔹 Эффекты
+  
   useEffect(() => { if (FIXED_CSS) injectGlobalStyles(FIXED_CSS) }, [])
   useEffect(() => { 
     const saved = loadProfileFromStorage()
@@ -99,7 +99,7 @@ export default function ChessApp() {
     return () => clearInterval(timer)
   }, [clock?.active, clock?.finished])
   
-  // 🔹 Heartbeat система — обновляем онлайн-статус каждые 5 сек
+  
   useEffect(() => {
     if (!address || !isConnected) return
     
@@ -113,7 +113,7 @@ export default function ChessApp() {
     return () => clearInterval(heartbeat)
   }, [address, isConnected])
   
-  // 🔹 Проверка старта игр каждые 5 сек: оба игрока должны быть онлайн
+  
   useEffect(() => {
     if (!address || !isConnected) return
     
@@ -161,7 +161,7 @@ export default function ChessApp() {
     return () => clearInterval(checkGames)
   }, [address, isConnected, games])
   
-  // 🔹 Функции профиля
+  
   const handleImageUpload = (e: ChangeEvent<HTMLInputElement>) => { 
     const file = e.target.files?.[0]
     if (!file) return
@@ -178,14 +178,14 @@ export default function ChessApp() {
     try { 
       await connect({ connector })
       setShowModal(false)
-      // 🔹 После подключения — обновить баланс
+      
       setTimeout(() => refetchBalance?.(), 1000)
     } catch { 
       resetConnectionStates() 
     } 
   }
   
-  // 🔹 Рендер без подключения (кнопка входа)
+  
   if (!isConnected) {
     return (
       <div style={{minHeight:'100vh', background:'var(--bg)', color:'var(--text)', padding:20, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', textAlign:'center'}}>
@@ -253,7 +253,7 @@ export default function ChessApp() {
     )
   }
   
-  // 🔹 Основной интерфейс (после подключения)
+  
   const balanceDisplay = balanceLoading ? '⏳' : balance?.formatted || "0.00"
   
   return (
@@ -752,7 +752,7 @@ export default function ChessApp() {
     const stakeWei = BigInt(Math.floor(stake * 1_000_000))
     
     try {
-      // 🔹 ШАГ 1: Approve
+      
       const approveHash = writeApprove({
         address: '0xaac20575371de01b4d10c4e7566d5453d72d56e7' as `0x${string}`,
         abi: ['function approve(address,uint256)external returns(bool)'] as const,
@@ -763,7 +763,7 @@ export default function ChessApp() {
       if (!approveHash) throw new Error('approve failed')
       alert('✅ Approve отправлен')
       
-      // 🔹 ШАГ 2: CreateGame — сохраняем хэш для отслеживания
+      
       const createHash = writeCreate({
         address: '0xCf5E5d01ADd5e2Ba62B2f6747E5CFC43e36D5005' as `0x${string}`,
         abi: ['function createGame(uint256,uint256)external'] as const,
@@ -773,11 +773,11 @@ export default function ChessApp() {
       })
       if (!createHash) throw new Error('createGame failed')
       
-      // 🔹 ШАГ 3: Сохраняем хэш — useWaitForTransactionReceipt автоматически начнёт следить
+      
       setCreateGameTxHash(createHash)
       alert('⏳ Жду подтверждения транзакции в блокчейне...')
       
-      // 🔹 ШАГ 4: Публикация в лобби — ТОЛЬКО после подтверждения!
+      
       // Это будет выполнено в useEffect ниже, когда receipt.status === 'success'
       
     } catch (err: any) {
