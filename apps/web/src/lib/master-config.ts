@@ -29,7 +29,14 @@ export const TIME_OPTIONS = CONFIG.TIME_CONTROLS || CONFIG.TIME_OPTIONS;
 export const STAKE_OPTIONS = CONFIG.STAKE_LEVELS || CONFIG.STAKE_OPTIONS;
 export const validateStake = CONFIG.validateStake;
 export const formatTime = CONFIG.formatTime;
-export const formatC4C = CONFIG.formatC4C || CONFIG.fromWei;
+export const formatC4C = (value: bigint | number | undefined): string => {
+  if (!value) return "0"
+  try {
+    return (Number(value) / 1_000_000).toLocaleString("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  } catch {
+    return "0"
+  }
+}
 export const formatPrizePool = CONFIG.formatPrizePool;
 export const formatClock = CONFIG.formatClock;
 
