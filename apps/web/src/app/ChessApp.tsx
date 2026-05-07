@@ -99,7 +99,6 @@ export default function ChessApp() {
     if (!clock || !clock.active || clock.finished) return
     const timer = setInterval(() => setClock((prev: any) => prev ? tickClock(prev) : prev), 1000)
     
-  }
 
 return () => clearInterval(timer)
   }, [clock?.active, clock?.finished])
