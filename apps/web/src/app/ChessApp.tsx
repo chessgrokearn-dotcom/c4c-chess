@@ -3,7 +3,7 @@
 import { useState, useEffect, ChangeEvent } from 'react'
 import { useAccount, useConnect, useDisconnect, useConnectors, useBalance, useWaitForTransactionReceipt, useWriteContract } from 'wagmi'
 import { Chess } from 'chess.js'
-import { Chessboard } from 'react-chessboard'
+import Chessboard from 'chessboardjsx'
 import {
   APP_NAME, C4C_BUY_URL, TIME_OPTIONS, STAKE_OPTIONS, UI_THEMES, UI_LANGS, UI_BOARDS, UI_TRANSLATE,
   formatTime, formatC4C, getBotMove, saveProfileToStorage, loadProfileFromStorage,
@@ -189,7 +189,7 @@ return () => clearInterval(timer)
     }
   }
 
-  const onDrop = (sourceSquare: string, targetSquare: string) => {
+  const onDrop = ({ sourceSquare, targetSquare }: { sourceSquare: string, targetSquare: string }) => {
     const gameCopy = new Chess(botFen)
     const move = gameCopy.move({
       from: sourceSquare,
@@ -420,11 +420,9 @@ return () => clearInterval(timer)
               <div style={{maxWidth:400, margin:'0 auto'}}>
                 <Chessboard 
                   position={botFen} 
-                  onPieceDrop={onDrop} 
-                  boardOrientation="white"
-                  arePiecesDraggable={true}
-                  areArrowsAllowed={false}
-                  boardWidth={350}
+                  onDrop={onDrop} 
+                  width={350}
+                  orientation="white"
                 />
               </div>
             </div>
