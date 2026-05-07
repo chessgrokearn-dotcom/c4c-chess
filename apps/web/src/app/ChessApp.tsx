@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, ChangeEvent } from 'react'
-import { useAccount, useConnect, useDisconnect, useConnectors, useBalance, useWaitForTransactionReceipt } from 'wagmi'
+import { useAccount, useConnect, useDisconnect, useConnectors, useBalance, useWaitForTransactionReceipt, useWriteContract } from 'wagmi'
 import { Chess } from 'chess.js'
 import {
   APP_NAME, C4C_BUY_URL, TIME_OPTIONS, STAKE_OPTIONS, UI_THEMES, UI_LANGS, UI_BOARDS, UI_TRANSLATE,
@@ -26,6 +26,8 @@ const getPieceSymbol = (p: any) => (!p || !p.type || !p.color) ? '' : PIECES[p.t
 
 export default function ChessApp() {
   const { address, isConnected, chain } = useAccount()
+  const { writeContract: writeApprove } = useWriteContract()
+  const { writeContract: writeCreate } = useWriteContract()
   const { connect, isPending: walletPending } = useConnect()
   const { disconnect } = useDisconnect()
   const connectors = useConnectors()
