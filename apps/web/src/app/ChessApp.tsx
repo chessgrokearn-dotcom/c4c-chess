@@ -61,6 +61,8 @@ export default function ChessApp() {
   const [newFriendAddr, setNewFriendAddr] = useState('')
   const [botGame, setBotGame] = useState(new Chess())
   const [botFen, setBotFen] = useState(() => new Chess().fen())
+  const [botTimeLeft, setBotTimeLeft] = useState(timeCtrl)
+  const [botTimerActive, setBotTimerActive] = useState(false)
   const [clock, setClock] = useState<any>(null)
   const [createGameTxHash, setCreateGameTxHash] = useState<`0x${string}` | null>(null)
   const [pendingGame, setPendingGame] = useState<PendingGame | null>(null)
@@ -186,8 +188,29 @@ return () => clearInterval(timer)
     if (move) {
       game.move(move)
       setBotFen(game.fen())
+      setMoveHistory((prev) => [...prev, move.san])
     }
   }
+
+  useEffect(() => {
+    if (!botTimerActive) return
+    if (botTimeLeft <= 0) {
+      setBotTimerActive(false)
+      return
+    }
+
+    const timer = setInterval(() => {
+      setBotTimeLeft((prev) => {
+        if (prev <= 1) {
+          setBotTimerActive(false)
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+
+    return () => clearInterval(timer)
+  }, [botTimerActive, botTimeLeft])
 
   const onDrop = ({ sourceSquare, targetSquare }: { sourceSquare: string, targetSquare: string }) => {
     const gameCopy = new Chess(botFen)
@@ -199,6 +222,8 @@ return () => clearInterval(timer)
     if (move) {
       setBotGame(gameCopy)
       setBotFen(gameCopy.fen())
+      setMoveHistory((prev) => [...prev, move.san])
+      setBotTimerActive(true)
       setTimeout(() => {
         const botGameCopy = new Chess(gameCopy.fen())
         makeBotMove(botGameCopy)
@@ -412,6 +437,9 @@ return () => clearInterval(timer)
                   const newGame = new Chess()
                   setBotGame(newGame)
                   setBotFen(newGame.fen())
+                  setMoveHistory([])
+                  setBotTimeLeft(timeCtrl)
+                  setBotTimerActive(true)
                 }}
                 style={{padding:'8px 16px', background:'var(--accent)', color:'#fff', border:'none', borderRadius:6, cursor:'pointer', marginBottom:10}}
               >
@@ -424,6 +452,27 @@ return () => clearInterval(timer)
                   width={350}
                   orientation="white"
                 />
+              </div>
+              <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginTop:16}}>
+                <div style={{padding:12, borderRadius:12, background:'var(--bg)', border:'1px solid var(--border)'}}>
+                  <p style={{margin:0, fontSize:13, opacity:0.7}}>⏱️ Таймер игры</p>
+                  <p style={{margin:6, fontSize:24, fontWeight:700}}>{formatTime(botTimeLeft)}</p>
+                  {botTimeLeft === 0 && (
+                    <p style={{margin:0, color:'#ef4444', fontSize:12}}>Время вышло</p>
+                  )}
+                </div>
+                <div style={{padding:12, borderRadius:12, background:'var(--bg)', border:'1px solid var(--border)', minHeight:80}}>
+                  <p style={{margin:0, fontSize:13, opacity:0.7}}>♟️ Ходы</p>
+                  {moveHistory.length === 0 ? (
+                    <p style={{margin:8, fontSize:13, opacity:0.7}}>Пока нет ходов</p>
+                  ) : (
+                    <ol style={{margin:8, paddingLeft:18, fontSize:13, lineHeight:1.6}}>
+                      {moveHistory.map((move, index) => (
+                        <li key={`${move}-${index}`}>{move}</li>
+                      ))}
+                    </ol>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -783,57 +832,7 @@ return () => clearInterval(timer)
           </div>
         )}
         
-        {/* Шахматная доска (упрощённо) */}
-        <div style={{marginTop:16, background:'var(--card)', padding:16, borderRadius:16}}>
-          <div style={{textAlign:'center', padding:40, opacity:0.7}}>
-            ♟️ Шахматная доска загружается...
-          </div>
-        </div>
-        
       </div>
     </div>
   )
-  const handleCreateGame = async () => {
-    if (!validateStake(stake)) return alert('❌ Выбери ставку из списка')
-    if (!address) return alert('🔗 Подключи кошелёк')
-    
-    const stakeWei = BigInt(Math.floor(stake * 1_000_000)) // C4C has 6 decimals
-    
-    try {
-      // 🔹 ШАГ 1: Approve токена C4C на контракт игры
-      alert('⏳ Подтверди разрешение на списание токенов в MetaMask...')
-      const approveHash = await writeApprove({
-        address: '0xaac20575371de01b4d10c4e7566d5453d72d56e7' as `0x${string}`,
-        abi: ['function approve(address,uint256)external returns(bool)'] as const,
-        functionName: 'approve',
-        args: ['0xCf5E5d01ADd5e2Ba62B2f6747E5CFC43e36D5005' as `0x${string}`, stakeWei],
-        chainId: 56
-      })
-      
-      // 🔹 ШАГ 2: Создать игру (списание токенов на баланс игры)
-      alert('⏳ Подтверди создание игры в MetaMask...')
-      const createHash = await writeCreate({
-        address: '0xCf5E5d01ADd5e2Ba62B2f6747E5CFC43e36D5005' as `0x${string}`,
-        abi: ['function createGame(uint256,uint256)external'] as const,
-        functionName: 'createGame',
-        args: [BigInt(timeCtrl), stakeWei],
-        chainId: 56
-      })
-      
-      // 🔹 ШАГ 3: Сохранить хэш — useEffect ниже обработает подтверждение
-      setCreateGameTxHash(createHash)
-      setPendingGame({ id: `pending_${Date.now()}`, stake, timeCtrl, creator: address })
-      alert('⏳ Ожидаем подтверждения блокчейна... Игра появится в лобби после подтверждения.')
-      
-    } catch (err: any) {
-      console.error('CreateGame Error:', err)
-      // 🔹 Если ошибка на этапе approve/create — не публикуем игру
-      if (err.message?.includes('rejected') || err.message?.includes('cancelled')) {
-        alert('❌ Транзакция отменена в кошельке. Игра не создана.')
-      } else {
-        alert(`❌ Ошибка: ${err.shortMessage || err.message || 'Неизвестная ошибка'}`)
-      }
-    }
-  }
-
 }
