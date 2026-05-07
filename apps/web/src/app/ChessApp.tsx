@@ -424,7 +424,9 @@ export default function ChessApp() {
                 <li>Подключить кошелёк → выбрать время и ставку → подтвердить approve и createGame.</li>
                 <li>Игра появится в лобби в статусе ожидания → дождаться соперника или пригласить друга.</li>
                 <li>Игра начнётся только когда оба игрока онлайн → будет звук, всплывающее окно и переход к доске.</li>
-                <li>Первый онлайн получает ⚪️ белые; оба онлайн одновременно → цвета назначаются случайно.</li>
+                <li>Первый онлайн получает ⚪️ белые;
+  type PendingGame = { id: string; stake: number; timeCtrl: number; creator: `0x${string}` }
+  const [pendingGame, setPendingGame] = useState<PendingGame | null>(null) оба онлайн одновременно → цвета назначаются случайно.</li>
                 <li>Победа по времени/мату → выигрыш; ничья → возврат ставок.</li>
               </ol>
             </details>
@@ -747,15 +749,15 @@ export default function ChessApp() {
       </div>
     </div>
   )
-  
   const handleCreateGame = async () => {
     if (!validateStake(stake)) return alert('❌ Выбери ставку из списка')
     if (!address) return alert('🔗 Подключи кошелёк')
     
-    const stakeWei = BigInt(Math.floor(stake * 1_000_000))
+    const stakeWei = BigInt(Math.floor(stake * 1_000_000)) // C4C has 6 decimals
     
     try {
-      // 🔹 ШАГ 1: Approve (await, потому что writeContractAsync возвращает Promise<Hash>)
+      // 🔹 ШАГ 1: Approve токена C4C на контракт игры
+      alert('⏳ Подтверди разрешение на списание токенов в MetaMask...')
       const approveHash = await writeApprove({
         address: '0xaac20575371de01b4d10c4e7566d5453d72d56e7' as `0x${string}`,
         abi: ['function approve(address,uint256)external returns(bool)'] as const,
@@ -763,9 +765,9 @@ export default function ChessApp() {
         args: ['0xCf5E5d01ADd5e2Ba62B2f6747E5CFC43e36D5005' as `0x${string}`, stakeWei],
         chainId: 56
       })
-      alert('✅ Approve отправлен')
       
-      // 🔹 ШАГ 2: CreateGame
+      // 🔹 ШАГ 2: Создать игру (списание токенов на баланс игры)
+      alert('⏳ Подтверди создание игры в MetaMask...')
       const createHash = await writeCreate({
         address: '0xCf5E5d01ADd5e2Ba62B2f6747E5CFC43e36D5005' as `0x${string}`,
         abi: ['function createGame(uint256,uint256)external'] as const,
@@ -774,15 +776,19 @@ export default function ChessApp() {
         chainId: 56
       })
       
-      // 🔹 ШАГ 3: Сохраняем хэш для отслеживания подтверждения
+      // 🔹 ШАГ 3: Сохранить хэш — useEffect ниже обработает подтверждение
       setCreateGameTxHash(createHash)
-      alert('⏳ Жду подтверждения транзакции в блокчейне...')
-      
-      // 🔹 ШАГ 4: Публикация в лобби — в useEffect при receipt.status === 'success'
+      setPendingGame({ id: `pending_${Date.now()}`, stake, timeCtrl, creator: address })
+      alert('⏳ Ожидаем подтверждения блокчейна... Игра появится в лобби после подтверждения.')
       
     } catch (err: any) {
       console.error('CreateGame Error:', err)
-      alert(`❌ ${err.message || 'Транзакция отменена'}`)
+      // 🔹 Если ошибка на этапе approve/create — не публикуем игру
+      if (err.message?.includes('rejected') || err.message?.includes('cancelled')) {
+        alert('❌ Транзакция отменена в кошельке. Игра не создана.')
+      } else {
+        alert(`❌ Ошибка: ${err.shortMessage || err.message || 'Неизвестная ошибка'}`)
+      }
     }
   }
 
