@@ -57,6 +57,8 @@ export default function ChessApp() {
   const [games, setGames] = useState<any[]>([])
   const [currentGame, setCurrentGame] = useState<any>(null)
   const [moveHistory, setMoveHistory] = useState<string[]>([])
+  const [botHistory, setBotHistory] = useState<{ fen: string; san: string }[]>([{ fen: new Chess().fen(), san: '' }])
+  const [historyIndex, setHistoryIndex] = useState(0)
   const [friends, setFriends] = useState<any[]>([])
   const [newFriendAddr, setNewFriendAddr] = useState('')
   const [botGame, setBotGame] = useState(new Chess())
@@ -187,8 +189,14 @@ return () => clearInterval(timer)
     const move = getBotMove(moves)
     if (move) {
       game.move(move)
-      setBotFen(game.fen())
+      const next = { fen: game.fen(), san: move.san }
+      setBotFen(next.fen)
       setMoveHistory((prev) => [...prev, move.san])
+      setBotHistory((prev) => {
+        const history = prev.slice(0, historyIndex + 1)
+        return [...history, next]
+      })
+      setHistoryIndex((prev) => prev + 1)
     }
   }
 
@@ -212,25 +220,36 @@ return () => clearInterval(timer)
     return () => clearInterval(timer)
   }, [botTimerActive, botTimeLeft])
 
-  const onDrop = ({ sourceSquare, targetSquare }: { sourceSquare: string, targetSquare: string }) => {
-    const gameCopy = new Chess(botFen)
+  const onDrop = (sourceSquare: string, targetSquare: string) => {
+    const currentFen = botHistory[historyIndex]?.fen || botFen
+    const gameCopy = new Chess(currentFen)
     const move = gameCopy.move({
       from: sourceSquare,
       to: targetSquare,
       promotion: 'q' // always promote to queen for simplicity
     })
     if (move) {
+      const next = { fen: gameCopy.fen(), san: move.san }
       setBotGame(gameCopy)
-      setBotFen(gameCopy.fen())
-      setMoveHistory((prev) => [...prev, move.san])
+      setBotFen(next.fen)
+      setMoveHistory((prev) => {
+        const history = prev.slice(0, historyIndex)
+        return [...history, move.san]
+      })
+      setBotHistory((prev) => {
+        const history = prev.slice(0, historyIndex + 1)
+        return [...history, next]
+      })
+      setHistoryIndex((prev) => prev + 1)
       setBotTimerActive(true)
       setTimeout(() => {
         const botGameCopy = new Chess(gameCopy.fen())
         makeBotMove(botGameCopy)
         setBotGame(botGameCopy)
       }, 500)
+      return true
     }
-    return !!move
+    return false
   }
 
   const updateProfile = (updates: any) => { 
@@ -438,6 +457,8 @@ return () => clearInterval(timer)
                   setBotGame(newGame)
                   setBotFen(newGame.fen())
                   setMoveHistory([])
+                  setBotHistory([{ fen: newGame.fen(), san: '' }])
+                  setHistoryIndex(0)
                   setBotTimeLeft(timeCtrl)
                   setBotTimerActive(true)
                 }}
@@ -447,11 +468,27 @@ return () => clearInterval(timer)
               </button>
               <div style={{maxWidth:400, margin:'0 auto'}}>
                 <Chessboard 
-                  position={botFen} 
+                  position={botHistory[historyIndex]?.fen || botFen} 
                   onDrop={onDrop} 
                   width={350}
                   orientation="white"
                 />
+              </div>
+              <div style={{display:'flex', justifyContent:'center', gap:10, marginTop:12}}>
+                <button
+                  onClick={() => setHistoryIndex((prev) => Math.max(prev - 1, 0))}
+                  disabled={historyIndex <= 0}
+                  style={{padding:'8px 12px', borderRadius:8, border:'1px solid var(--border)', background: historyIndex <= 0 ? 'var(--bg)' : 'var(--card)', color:'var(--text)', cursor: historyIndex <= 0 ? 'not-allowed' : 'pointer'}}
+                >
+                  ◀️ Назад
+                </button>
+                <button
+                  onClick={() => setHistoryIndex((prev) => Math.min(prev + 1, botHistory.length - 1))}
+                  disabled={historyIndex >= botHistory.length - 1}
+                  style={{padding:'8px 12px', borderRadius:8, border:'1px solid var(--border)', background: historyIndex >= botHistory.length - 1 ? 'var(--bg)' : 'var(--card)', color:'var(--text)', cursor: historyIndex >= botHistory.length - 1 ? 'not-allowed' : 'pointer'}}
+                >
+                  ▶️ Вперед
+                </button>
               </div>
               <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginTop:16}}>
                 <div style={{padding:12, borderRadius:12, background:'var(--bg)', border:'1px solid var(--border)'}}>
