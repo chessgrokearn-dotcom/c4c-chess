@@ -220,7 +220,8 @@ return () => clearInterval(timer)
     return () => clearInterval(timer)
   }, [botTimerActive, botTimeLeft])
 
-  const onDrop = (sourceSquare: string, targetSquare: string) => {
+  const onDrop = (obj: any) => {
+    const { sourceSquare, targetSquare } = obj
     const currentFen = botHistory[historyIndex]?.fen || botFen
     const gameCopy = new Chess(currentFen)
     const move = gameCopy.move({
@@ -247,9 +248,7 @@ return () => clearInterval(timer)
         makeBotMove(botGameCopy)
         setBotGame(botGameCopy)
       }, 500)
-      return true
     }
-    return false
   }
 
   const updateProfile = (updates: any) => { 
