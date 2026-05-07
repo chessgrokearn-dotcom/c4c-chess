@@ -789,3 +789,4 @@ export default function ChessApp() {
 
 
   const handleCreateGame = async () => { alert('🚧 Создай игру позже') }
+}
