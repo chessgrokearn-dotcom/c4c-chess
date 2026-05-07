@@ -3,6 +3,7 @@
 import { useState, useEffect, ChangeEvent } from 'react'
 import { useAccount, useConnect, useDisconnect, useConnectors, useBalance, useWaitForTransactionReceipt, useWriteContract } from 'wagmi'
 import { Chess } from 'chess.js'
+import { Chessboard } from 'react-chessboard'
 import {
   APP_NAME, C4C_BUY_URL, TIME_OPTIONS, STAKE_OPTIONS, UI_THEMES, UI_LANGS, UI_BOARDS, UI_TRANSLATE,
   formatTime, formatC4C, getBotMove, saveProfileToStorage, loadProfileFromStorage,
@@ -58,6 +59,8 @@ export default function ChessApp() {
   const [moveHistory, setMoveHistory] = useState<string[]>([])
   const [friends, setFriends] = useState<any[]>([])
   const [newFriendAddr, setNewFriendAddr] = useState('')
+  const [botGame, setBotGame] = useState(new Chess())
+  const [botFen, setBotFen] = useState(() => new Chess().fen())
   const [clock, setClock] = useState<any>(null)
   const [createGameTxHash, setCreateGameTxHash] = useState<`0x${string}` | null>(null)
   const [pendingGame, setPendingGame] = useState<PendingGame | null>(null)
@@ -174,6 +177,35 @@ return () => clearInterval(timer)
     const reader = new FileReader()
     reader.onloadend = () => updateProfile({ avatar: reader.result })
     reader.readAsDataURL(file)
+  }
+
+  const makeBotMove = (game: Chess) => {
+    const moves = game.moves({ verbose: true })
+    if (moves.length === 0) return
+    const move = getBotMove(moves)
+    if (move) {
+      game.move(move)
+      setBotFen(game.fen())
+    }
+  }
+
+  const onDrop = (sourceSquare: string, targetSquare: string) => {
+    const gameCopy = new Chess(botFen)
+    const move = gameCopy.move({
+      from: sourceSquare,
+      to: targetSquare,
+      promotion: 'q' // always promote to queen for simplicity
+    })
+    if (move) {
+      setBotGame(gameCopy)
+      setBotFen(gameCopy.fen())
+      setTimeout(() => {
+        const botGameCopy = new Chess(gameCopy.fen())
+        makeBotMove(botGameCopy)
+        setBotGame(botGameCopy)
+      }, 500)
+    }
+    return !!move
   }
 
   const updateProfile = (updates: any) => { 
@@ -359,7 +391,7 @@ return () => clearInterval(timer)
             </div>
             
             {/* Настройки игры */}
-            <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginTop:16}}>
+            <div style={{display:'grid', gridTemplateColumns:'1fr', gap:8, marginTop:16}}>
               <div>
                 <label style={{fontSize:12, opacity:0.7}}>⏱️ Время</label>
                 <select 
@@ -370,22 +402,32 @@ return () => clearInterval(timer)
                   {TIME_OPTIONS.map((o:any) => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
               </div>
-              <div>
-                <label style={{fontSize:12, opacity:0.7}}>💰 Ставка</label>
-                <select 
-                  value={stake} 
-                  onChange={(e:any) => setStake(Number(e.target.value))} 
-                  style={{width:'100%', padding:8, marginTop:4, borderRadius:6, background:'var(--bg)', border:'1px solid var(--border)', color:'var(--text)'}}
-                >
-                  {STAKE_OPTIONS.map((opt:any) => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
+            </div>
+            
+            {/* Игра с ботом */}
+            <div style={{marginTop:20}}>
+              <h4 style={{marginBottom:10}}>🤖 Игра с ботом</h4>
+              <button 
+                onClick={() => { 
+                  const newGame = new Chess()
+                  setBotGame(newGame)
+                  setBotFen(newGame.fen())
+                }}
+                style={{padding:'8px 16px', background:'var(--accent)', color:'#fff', border:'none', borderRadius:6, cursor:'pointer', marginBottom:10}}
+              >
+                🔄 Новая игра
+              </button>
+              <div style={{maxWidth:400, margin:'0 auto'}}>
+                <Chessboard 
+                  position={botFen} 
+                  onPieceDrop={onDrop} 
+                  boardOrientation="white"
+                  arePiecesDraggable={true}
+                  areArrowsAllowed={false}
+                  boardWidth={350}
+                />
               </div>
             </div>
-            <p style={{fontSize:14, marginTop:8}}>
-              🏆 Призовой фонд: <span style={{color:'var(--accent)'}}>{formatPrizePool(stake)}</span>
-            </p>
           </div>
         )}
         
