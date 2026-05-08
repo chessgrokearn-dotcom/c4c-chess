@@ -28,8 +28,8 @@ export const config = createConfig({
       metadata: {
         name: 'c4c-chess',
         description: 'Chess on blockchain with C4C tokens',
-        url: 'https://c4c-chess.vercel.app',
-        icons: ['https://c4c-chess.vercel.app/icon.png'],
+        url: 'https://c4c-chess.netlify.app',
+        icons: ['https://c4c-chess.netlify.app/favicon.svg'],
       },
     }),
   ],
