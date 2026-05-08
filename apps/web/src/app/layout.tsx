@@ -4,6 +4,9 @@ import { Providers } from './providers'
 export const metadata = {
   title: '♟️ c4c-chess — Шахматы на блокчейне',
   description: 'Играй в шахматы на токены C4C. Создавай игры, приглашай друзей, выигрывай!',
+  icons: {
+    icon: '/favicon.svg',
+  },
 }
 
 export default function RootLayout({
