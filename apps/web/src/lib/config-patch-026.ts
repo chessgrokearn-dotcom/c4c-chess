@@ -660,19 +660,17 @@ export function useApproveC4C() {
 export function useCreateTokenGame() {
   const { writeContractAsync } = useWriteContract();
 
-  const create = async (timeCtrl: number, stake: number) => {
+  const create = async (gameId: string, timeCtrl: number, stake: number) => {
     try {
       if (!validateStake(stake)) {
         throw new Error('Недопустимый размер ставки');
       }
-      // Генерируем корректный 32-байтовый hex gameId
-      const gameId = `0x${Array.from({length:64}, ()=>Math.floor(Math.random()*16).toString(16)).join('')}` as `0x${string}`;
       
       return await writeContractAsync({
         address: GAME_CONTRACT_ADDRESS,
         abi: [{ name: 'createGame', type: 'function', inputs: [{ name: 'gameId', type: 'bytes32' }, { name: 'stake', type: 'uint256' }, { name: 'timeLimit', type: 'uint256' }], outputs: [] }],
         functionName: 'createGame',
-        args: [gameId, toWei(stake), BigInt(timeCtrl)],
+        args: [gameId as `0x${string}`, toWei(stake), BigInt(timeCtrl)],
         chainId: CHAIN_ID
       });
     } catch (error: any) {

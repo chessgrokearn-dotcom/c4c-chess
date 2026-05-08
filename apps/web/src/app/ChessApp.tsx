@@ -154,12 +154,7 @@ return () => clearInterval(timer)
             const p2 = presence[game.players[1]?.toLowerCase()] || 0
             const opponent = game.players.find((p: string) => p.toLowerCase() !== address?.toLowerCase()) || ''
             
-            let myColor: 'w' | 'b' = 'w'
-            if (Math.abs(p1 - p2) < 2000) {
-              myColor = Math.random() < 0.5 ? 'w' : 'b'
-            } else {
-              myColor = p1 < p2 ? 'w' : 'b'
-            }
+            let myColor: 'w' | 'b' = Math.random() < 0.5 ? 'w' : 'b'
             
             createNotification({
               id: `start_${game.id}`,
@@ -186,6 +181,26 @@ return () => clearInterval(timer)
     
     return () => clearInterval(checkGames)
   }, [address, isConnected, games])
+  
+  useEffect(() => {
+    if (createGameReceipt && pendingGame) {
+      // Транзакция подтверждена, публикуем игру в лобби
+      publishGameToLobby(pendingGame)
+      setGames(getLobbyGames())
+      createNotification({
+        type: 'game_created',
+        title: '🎮 Игра создана',
+        message: `Игра опубликована в лобби. Ссылка: ${generateGameInvite(pendingGame.id, profile.name || `Игрок`, pendingGame.stake, pendingGame.timeCtrl).link}`,
+        gameId: pendingGame.id,
+        read: false,
+        createdAt: Date.now()
+      })
+      setNotifications(getNotifications(notificationFilter))
+      setPendingGame(null)
+      setCreateGameTxHash(null)
+      alert('✅ Игра создана и опубликована в лобби!')
+    }
+  }, [createGameReceipt, pendingGame, profile.name, notificationFilter, setNotifications])
   
   
   const handleImageUpload = (e: ChangeEvent<HTMLInputElement>) => { 
@@ -582,7 +597,6 @@ return () => clearInterval(timer)
                 
                 try {
                   const gameId = `0x${Array.from({ length: 32 }, () => Math.floor(Math.random() * 256).toString(16).padStart(2, '0')).join('')}` as `0x${string}`
-                  const invite = generateGameInvite(gameId, profile.name || `Игрок`, stake, timeCtrl)
                   const gameData = {
                     id: gameId,
                     creator: address,
@@ -595,25 +609,10 @@ return () => clearInterval(timer)
                     startAt: 0
                   }
                   await approve(stake)
-                  await createTokenGame(timeCtrl, stake)
-                  publishGameToLobby(gameData)
-                  setGames(getLobbyGames())
-                  createNotification({
-                    type: 'game_created',
-                    title: '🎮 Игра создана',
-                    message: `Игра опубликована в лобби. Ссылка: ${invite.link}`,
-                    gameId,
-                    read: false,
-                    createdAt: Date.now()
-                  })
-                  setNotifications(getNotifications(notificationFilter))
-
-                  if (navigator.clipboard) {
-                    await navigator.clipboard.writeText(invite.text)
-                  }
-
-                  alert('✅ Игра создана и приглашение скопировано в буфер обмена!')
-                  setTab('lobby')
+                  const txHash = await createTokenGame(gameId, timeCtrl, stake)
+                  setCreateGameTxHash(txHash)
+                  setPendingGame(gameData)
+                  alert('⏳ Создание игры... Ожидание подтверждения транзакции.')
                 } catch (error) {
                   console.error('Ошибка создания игры:', error)
                   alert('❌ Ошибка создания игры')
@@ -656,6 +655,18 @@ return () => clearInterval(timer)
                       </p>
                     </div>
                     <div style={{display:'flex', flexDirection:'column', gap:8}}>
+                      <button
+                        onClick={async () => {
+                          const invite = generateGameInvite(g.id, profile.name || 'Игрок', g.stake, g.timeCtrl)
+                          if (navigator.clipboard) {
+                            await navigator.clipboard.writeText(invite.link)
+                          }
+                          alert('🔗 Ссылка приглашения скопирована в буфер обмена!')
+                        }}
+                        style={{padding:'8px 12px', background:'#3b82f6', color:'#fff', borderRadius:6, border:'none', cursor:'pointer', fontSize:12}}
+                      >
+                        🔗 Ссылка
+                      </button>
                       {g.creator === address ? (
                         <button
                           onClick={async () => {
@@ -693,7 +704,7 @@ return () => clearInterval(timer)
                               players: [...(g.players || []), address],
                               status: 'starting',
                               balance: (g.balance || 0) + g.stake,
-                              startAt: Date.now()
+                              startAt: Date.now() + 15 * 60 * 1000  // 15 минут ожидания
                             }
 
                             publishGameToLobby(updatedGame)
@@ -717,12 +728,7 @@ return () => clearInterval(timer)
                               const presence = JSON.parse(localStorage.getItem('c4c_presence') || '{}')
                               const p1 = presence[updatedGame.players[0]?.toLowerCase()] || 0
                               const p2 = presence[updatedGame.players[1]?.toLowerCase()] || 0
-                              let myColor: 'w' | 'b' = 'w'
-                              if (Math.abs(p1 - p2) < 2000) {
-                                myColor = Math.random() < 0.5 ? 'w' : 'b'
-                              } else {
-                                myColor = p1 < p2 ? 'w' : 'b'
-                              }
+                              let myColor: 'w' | 'b' = Math.random() < 0.5 ? 'w' : 'b'
                               createNotification({
                                 id: `start_${updatedGame.id}`,
                                 type: 'game_started',
