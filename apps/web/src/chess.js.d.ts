@@ -43,7 +43,6 @@ declare module 'chess.js' {
     ascii(): string
   }
 
-  export function Chess(fen?: string): ChessInstance
   export class Chess {
     constructor(fen?: string)
     move(move: string | { from: string; to: string; promotion?: string }, options?: any): Move | null
@@ -74,4 +73,8 @@ declare module 'chess.js' {
     load(fen: string): boolean
     ascii(): string
   }
+
+  // Default export
+  declare const ChessConstructor: typeof Chess
+  export default ChessConstructor
 }
