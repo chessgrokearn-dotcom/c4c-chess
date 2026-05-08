@@ -54,7 +54,7 @@ export default function GamePage() {
   const gameId = params?.id as string | undefined
 
   const [game, setGame] = useState<GameLobby | null>(null)
-  const [chess, setChess] = useState<Chess | null>(null)
+  const [chess, setChess] = useState<InstanceType<typeof Chess> | null>(null)
   const [fen, setFen] = useState('')
   const [selected, setSelected] = useState<string | null>(null)
   const [possibleMoves, setPossibleMoves] = useState<string[]>([])
