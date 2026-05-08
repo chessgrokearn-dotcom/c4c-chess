@@ -82,9 +82,11 @@ export default function ChessApp() {
   
   
   useEffect(() => { if (FIXED_CSS) injectGlobalStyles(FIXED_CSS) }, [])
-  useEffect(() => { 
+  useEffect(() => {
+    if (!address) return  // 🔹 Ждём подключения кошелька
     const saved = loadProfileFromStorage()
     if (saved && address) setProfile({ ...saved, id: address })
+    else if (address) setProfile((p:any) => ({ ...p, id: address, name: p.name || `Player_${address?.slice(2,8)}` })) setProfile({ ...saved, id: address })
     else if (address) setProfile((p:any) => ({ ...p, id: address, name: p.name || `Player_${address?.slice(2,8)}` }))
     setGames(getLobbyGames())
     setFriends(getFriends())
