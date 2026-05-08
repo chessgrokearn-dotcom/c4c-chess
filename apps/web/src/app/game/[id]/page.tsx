@@ -123,7 +123,7 @@ export default function GamePage() {
                 })
                 if (board.in_checkmate()) {
                   setOver(`🏆 Мат! Победа ${move.color === 'w' ? 'Белых' : 'Чёрных'}`)
-                } else if (board.isDraw()) {
+                } else if (board.in_draw()) {
                   setOver('♟️ Ничья')
                 }
                 boardInstance.current.position(board.fen())
