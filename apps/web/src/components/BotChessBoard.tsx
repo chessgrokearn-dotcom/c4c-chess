@@ -1,12 +1,5 @@
 'use client'
 
-// 🔹 Динамический импорт chess.js для совместимости с Next.js production
-let Chess: any
-if (typeof window !== 'undefined') {
-  // @ts-ignore
-  Chess = require('chess.js').Chess || require('chess.js').default
-}
-
 import { useEffect, useRef, useState } from 'react'
 import $ from 'jquery'
 import 'chessboard/dist/chessboard-1.0.0.min.css'
@@ -20,10 +13,25 @@ interface BotChessBoardProps {
 
 export default function BotChessBoard({ timeControl = 600, onGameEnd }: BotChessBoardProps) {
   const boardRef = useRef<HTMLDivElement>(null)
-  const [game] = useState(() => new Chess())
+  const [game, setGame] = useState<any>(null)
   const [status, setStatus] = useState('')
-  const [fen, setFen] = useState(game.fen())
+  const [fen, setFen] = useState('')
   const boardInstance = useRef<any>(null)
+
+  // Инициализация Chess при загрузке компонента
+  useEffect(() => {
+    const initChess = async () => {
+      try {
+        const Chess = (await import('chess.js')).default
+        const newGame = new Chess()
+        setGame(newGame)
+        setFen(newGame.fen())
+      } catch (error) {
+        console.error('Ошибка при инициализации Chess:', error)
+      }
+    }
+    initChess()
+  }, [])
 
   // 🔹 Таймер игры
   const { 
@@ -44,7 +52,7 @@ export default function BotChessBoard({ timeControl = 600, onGameEnd }: BotChess
   })
 
   const makeRandomBotMove = () => {
-    if (game.game_over()) return
+    if (!game || game.game_over()) return
     const moves = game.moves({ verbose: true }) as any[]
     if (moves.length === 0) return
     const move = moves[Math.floor(Math.random() * moves.length)] as any
@@ -54,11 +62,13 @@ export default function BotChessBoard({ timeControl = 600, onGameEnd }: BotChess
   }
 
   const onDragStart = (_source: string, piece: string) => {
-    if (game.game_over() || timer.isGameOver) return false
+    if (!game || game.game_over() || timer.isGameOver) return false
     return piece.search(/^b/) === -1 // только белые фигуры
   }
 
   const onDrop = (source: string, target: string) => {
+    if (!game) return 'snapback'
+    
     // 🔹 Запускаем таймер при первом ходе
     if (!timer.isRunning && !timer.isGameOver) startTimer()
     
@@ -84,10 +94,13 @@ export default function BotChessBoard({ timeControl = 600, onGameEnd }: BotChess
   }
 
   const onSnapEnd = () => {
-    if (boardInstance.current) boardInstance.current.position(game.fen())
+    if (boardInstance.current && game) boardInstance.current.position(game.fen())
+  }
   }
 
   const updateStatus = () => {
+    if (!game) return
+    
     let newStatus = ''
     const moveColor = game.turn() === 'w' ? 'Белые' : 'Чёрные'
     if (game.in_checkmate()) {
@@ -107,7 +120,7 @@ export default function BotChessBoard({ timeControl = 600, onGameEnd }: BotChess
   }
 
   useEffect(() => {
-    if (!boardRef.current) return
+    if (!boardRef.current || !game) return
     // @ts-ignore
     boardInstance.current = $(boardRef.current).chessboard({
       draggable: true,
@@ -124,7 +137,7 @@ export default function BotChessBoard({ timeControl = 600, onGameEnd }: BotChess
         $(boardRef.current).chessboard('destroy')
       }
     }
-  }, [])
+  }, [game])
 
   useEffect(() => {
     if (boardInstance.current) boardInstance.current.position(fen, false)
@@ -148,10 +161,11 @@ export default function BotChessBoard({ timeControl = 600, onGameEnd }: BotChess
       {timer.isGameOver && (
         <button 
           onClick={() => { 
-            game.reset()
-            setFen(game.fen())
-            setStatus('')
-            // Сброс таймера можно добавить при необходимости
+            if (game) {
+              game.reset()
+              setFen(game.fen())
+              setStatus('')
+            }
           }}
           style={{ marginTop: 12, padding: '8px 16px', background: '#667eea', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer' }}
         >
