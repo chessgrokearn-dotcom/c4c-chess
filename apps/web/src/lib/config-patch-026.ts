@@ -637,48 +637,72 @@ export function formatClock(seconds: number): string {
 
 // 🔹 ХУКИ WAGMI V2
 export function useApproveC4C() {
-  const { writeContract, data: txHash, isPending, isSuccess } = useWriteContract();
-  const { isLoading: isConfirming } = useWaitForTransactionReceipt({ hash: txHash as `0x${string}` });
+  const { writeContractAsync } = useWriteContract();
 
-  const approve = (amount: number) => writeContract({
-    address: C4C_TOKEN_ADDRESS,
-    abi: [{ name: 'approve', type: 'function', inputs: [{ name: 'spender', type: 'address' }, { name: 'amount', type: 'uint256' }], outputs: [{ name: '', type: 'bool' }] }],
-    functionName: 'approve',
-    args: [GAME_CONTRACT_ADDRESS, toWei(amount)],
-    chainId: CHAIN_ID
-  });
+  const approve = async (amount: number) => {
+    try {
+      return await writeContractAsync({
+        address: C4C_TOKEN_ADDRESS,
+        abi: [{ name: 'approve', type: 'function', inputs: [{ name: 'spender', type: 'address' }, { name: 'amount', type: 'uint256' }], outputs: [{ name: '', type: 'bool' }] }],
+        functionName: 'approve',
+        args: [GAME_CONTRACT_ADDRESS, toWei(amount)],
+        chainId: CHAIN_ID
+      });
+    } catch (error: any) {
+      console.error('Ошибка approve:', error);
+      throw new Error(`Approve ошибка: ${error.message || 'Unknown error'}`);
+    }
+  };
 
-  return { approve, txHash, isPending, isConfirming, isSuccess };
+  return { approve };
 }
 
 export function useCreateTokenGame() {
-  const { writeContract, data: txHash, isPending, isSuccess } = useWriteContract();
-  const { isLoading: isConfirming } = useWaitForTransactionReceipt({ hash: txHash as `0x${string}` });
+  const { writeContractAsync } = useWriteContract();
 
-  const create = (timeCtrl: number, stake: number) => writeContract({
-    address: GAME_CONTRACT_ADDRESS,
-    abi: [{ name: 'createGame', type: 'function', inputs: [{ name: 'gameId', type: 'bytes32' }, { name: 'stake', type: 'uint256' }, { name: 'timeLimit', type: 'uint256' }], outputs: [] }],
-    functionName: 'createGame',
-    args: [`0x${Math.random().toString(16).slice(2, 66)}` as `0x${string}`, toWei(stake), BigInt(timeCtrl)],
-    chainId: CHAIN_ID
-  });
+  const create = async (timeCtrl: number, stake: number) => {
+    try {
+      if (!validateStake(stake)) {
+        throw new Error('Недопустимый размер ставки');
+      }
+      // Генерируем корректный 32-байтовый hex gameId
+      const gameId = `0x${Array.from({length:64}, ()=>Math.floor(Math.random()*16).toString(16)).join('')}` as `0x${string}`;
+      
+      return await writeContractAsync({
+        address: GAME_CONTRACT_ADDRESS,
+        abi: [{ name: 'createGame', type: 'function', inputs: [{ name: 'gameId', type: 'bytes32' }, { name: 'stake', type: 'uint256' }, { name: 'timeLimit', type: 'uint256' }], outputs: [] }],
+        functionName: 'createGame',
+        args: [gameId, toWei(stake), BigInt(timeCtrl)],
+        chainId: CHAIN_ID
+      });
+    } catch (error: any) {
+      console.error('Ошибка createGame:', error);
+      throw new Error(`Создание игры ошибка: ${error.message || 'Unknown error'}`);
+    }
+  };
 
-  return { create, txHash, isPending, isConfirming, isSuccess };
+  return { create };
 }
 
 export function useJoinTokenGame() {
-  const { writeContract, data: txHash, isPending, isSuccess } = useWriteContract();
-  const { isLoading: isConfirming } = useWaitForTransactionReceipt({ hash: txHash as `0x${string}` });
+  const { writeContractAsync } = useWriteContract();
 
-  const join = (gameId: string) => writeContract({
-    address: GAME_CONTRACT_ADDRESS,
-    abi: [{ name: 'depositStake', type: 'function', inputs: [{ name: 'gameId', type: 'bytes32' }], outputs: [] }],
-    functionName: 'depositStake',
-    args: [gameId as `0x${string}`],
-    chainId: CHAIN_ID
-  });
+  const join = async (gameId: string) => {
+    try {
+      return await writeContractAsync({
+        address: GAME_CONTRACT_ADDRESS,
+        abi: [{ name: 'depositStake', type: 'function', inputs: [{ name: 'gameId', type: 'bytes32' }], outputs: [] }],
+        functionName: 'depositStake',
+        args: [gameId as `0x${string}`],
+        chainId: CHAIN_ID
+      });
+    } catch (error: any) {
+      console.error('Ошибка depositStake:', error);
+      throw new Error(`Присоединение ошибка: ${error.message || 'Unknown error'}`);
+    }
+  };
 
-  return { join, txHash, isPending, isConfirming, isSuccess };
+  return { join };
 }
 
 // 🔹 ИНТЕРФЕЙС И ФУНКЦИИ ОПОВЕЩЕНИЙ
