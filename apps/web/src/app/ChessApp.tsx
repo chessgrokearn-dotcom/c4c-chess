@@ -75,9 +75,6 @@ export default function ChessApp() {
   })
   const [notifications, setNotifications] = useState<GameNotification[]>([])
   const [notificationFilter, setNotificationFilter] = useState<'all' | 'unread'>('all')
-  const [false, setIsApproving] = useState(false)
-  const [false, setIsCreating] = useState(false)
-  const [false, setIsJoining] = useState(false)
 
   const { approve } = useApproveC4C()
   const { create: createTokenGame } = useCreateTokenGame()
