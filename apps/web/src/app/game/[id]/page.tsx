@@ -1,15 +1,9 @@
 'use client'
 
-// 🔹 Динамический импорт chess.js
-let Chess: any
-if (typeof window !== 'undefined') {
-  // @ts-ignore
-  Chess = require('chess.js').Chess || require('chess.js').default
-}
-
 import { useEffect, useMemo, useState, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createNotification, formatC4C, formatPrizePool, formatTime, getLobbyGames } from '@/lib/config'
+import Chess from 'chess.js'
 
 const PIECES: Record<string, { w: string; b: string }> = {
   p: { w: '♙', b: '♟' },
@@ -89,33 +83,42 @@ export default function GamePage() {
 
   useEffect(() => {
     if (!gameId) return
-    const storedGames = getLobbyGames()
-    const found = storedGames.find((item: any) => item.id === gameId) as GameLobby | undefined
-    if (found) {
-      setGame(found)
-      const board = new Chess()
-      setChess(board)
-      setFen(board.fen())
-      setClock({
-        white: found.timeCtrl || found.timeControl || 900,
-        black: found.timeCtrl || found.timeControl || 900,
-        turn: 'w',
-        running: false,
-        finished: false
-      })
-      setStatusLabel(found.status === 'active' ? 'Игра началась' : 'Ожидается соперник')
+    
+    const initializeGame = async () => {
+      try {
+        const storedGames = getLobbyGames()
+        const found = storedGames.find((item: any) => item.id === gameId) as GameLobby | undefined
+        if (!found) return
+        
+        setGame(found)
+        
+        // Динамический импорт Chess для совместимости с production
+        const ChessClass = await import('chess.js').then(m => m.default)
+        const board = new ChessClass()
+        setChess(board)
+        setFen(board.fen())
+        setClock({
+          white: found.timeCtrl || found.timeControl || 900,
+          black: found.timeCtrl || found.timeControl || 900,
+          turn: 'w',
+          running: false,
+          finished: false
+        })
+        setStatusLabel(found.status === 'active' ? 'Игра началась' : 'Ожидается соперник')
 
-      // Initialize chessboard
-      if (boardRef.current && typeof window !== 'undefined') {
-        import('chessboardjs').then((Chessboard) => {
-          boardInstance.current = Chessboard.default(boardRef.current as HTMLElement, {
-            position: board.fen(),
-            draggable: true,
-            dropOffBoard: 'snapback',
-            sparePieces: false,
-            onDrop: (source: string, target: string) => {
-              const move = board.move({ from: source, to: target, promotion: 'q' })
-              if (move) {
+        // Initialize chessboard
+        if (boardRef.current && typeof window !== 'undefined') {
+          try {
+            const Chessboard = await import('chessboardjs')
+            boardInstance.current = Chessboard.default(boardRef.current as HTMLElement, {
+              position: board.fen(),
+              draggable: true,
+              dropOffBoard: 'snapback',
+              sparePieces: false,
+              onDrop: (source: string, target: string) => {
+                const move = board.move({ from: source, to: target, promotion: 'q' })
+                if (!move) return 'snapback'
+                
                 setFen(board.fen())
                 setMoveHistory((prev) => [...prev, move.san])
                 setStatusLabel(board.in_checkmate() ? 'Мат!' : board.in_check() ? 'Шах!' : 'Ход сделан')
@@ -127,21 +130,29 @@ export default function GamePage() {
                     running: true
                   }
                 })
+                
                 if (board.in_checkmate()) {
                   setOver(`🏆 Мат! Победа ${move.color === 'w' ? 'Белых' : 'Чёрных'}`)
                 } else if (board.in_draw()) {
                   setOver('♟️ Ничья')
                 }
-                boardInstance.current.position(board.fen())
-                return 'snapback'
-              } else {
+                
+                if (boardInstance.current) {
+                  boardInstance.current.position(board.fen())
+                }
                 return 'snapback'
               }
-            }
-          })
-        })
+            })
+          } catch (err) {
+            console.error('Ошибка при загрузке chessboard:', err)
+          }
+        }
+      } catch (err) {
+        console.error('Ошибка при инициализации игры:', err)
       }
     }
+    
+    initializeGame()
   }, [gameId])
 
   useEffect(() => {
