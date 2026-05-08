@@ -112,7 +112,7 @@ export default function GamePage() {
               if (move) {
                 setFen(board.fen())
                 setMoveHistory((prev) => [...prev, move.san])
-                setStatusLabel(board.isCheckmate() ? 'Мат!' : board.isCheck() ? 'Шах!' : 'Ход сделан')
+                setStatusLabel(board.in_checkmate() ? 'Мат!' : board.in_check() ? 'Шах!' : 'Ход сделан')
                 setClock((prev) => {
                   if (!prev) return prev
                   return {
@@ -121,7 +121,7 @@ export default function GamePage() {
                     running: true
                   }
                 })
-                if (board.isCheckmate()) {
+                if (board.in_checkmate()) {
                   setOver(`🏆 Мат! Победа ${move.color === 'w' ? 'Белых' : 'Чёрных'}`)
                 } else if (board.isDraw()) {
                   setOver('♟️ Ничья')
