@@ -39,9 +39,9 @@ export default function BotChessBoard({ timeControl = 600, onGameEnd }: BotChess
 
   const makeRandomBotMove = () => {
     if (game.game_over()) return
-    const moves = game.moves({ verbose: true })
+    const moves = game.moves({ verbose: true }) as any[]
     if (moves.length === 0) return
-    const move = moves[Math.floor(Math.random() * moves.length)]
+    const move = moves[Math.floor(Math.random() * moves.length)] as any
     game.move(move.san)
     setFen(game.fen())
     updateStatus()
