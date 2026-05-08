@@ -1,8 +1,14 @@
 'use client'
 
+// 🔹 Динамический импорт chess.js
+let Chess: any
+if (typeof window !== 'undefined') {
+  // @ts-ignore
+  Chess = require('chess.js').Chess || require('chess.js').default
+}
+
 import { useEffect, useMemo, useState, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import Chess from 'chess.js'
 import { createNotification, formatC4C, formatPrizePool, formatTime, getLobbyGames } from '@/lib/config'
 
 const PIECES: Record<string, { w: string; b: string }> = {

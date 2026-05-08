@@ -1,9 +1,15 @@
 'use client'
 
+// 🔹 Динамический импорт chess.js для совместимости с Next.js production
+let Chess: any
+if (typeof window !== 'undefined') {
+  // @ts-ignore
+  Chess = require('chess.js').Chess || require('chess.js').default
+}
+
 import { useEffect, useRef, useState } from 'react'
 import $ from 'jquery'
 import 'chessboard/dist/chessboard-1.0.0.min.css'
-import Chess from 'chess.js'
 import { useChessTimer } from '@/hooks/useChessTimer'
 import ChessTimerDisplay from '@/components/ChessTimerDisplay'
 
